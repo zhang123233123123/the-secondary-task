@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Experiment Configuration Setup</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <!-- Material Symbols -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+      rel="stylesheet"
+    />
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              primary: "#3c83f6",
+              "primary-dark": "#2563eb",
+              "background-light": "#f5f7f8",
+              "background-dark": "#101723", // Matches the deep slate user requested
+              "card-dark": "#182334",
+              "border-dark": "#314668",
+              "text-subtle": "#90a7cb",
+            },
+            fontFamily: {
+              display: ["Inter", "sans-serif"],
+              mono: ["Roboto Mono", "monospace"],
+            },
+            borderRadius: {
+              DEFAULT: "0.25rem",
+              lg: "0.5rem",
+              xl: "0.75rem",
+              "2xl": "1rem",
+              full: "9999px",
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      /* Custom scrollbar for a cleaner look */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #101723;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #314668;
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #4b5563;
+      }
+
+      /* Range Slider Styling */
+      input[type="range"] {
+        -webkit-appearance: none;
+        background: transparent;
+      }
+
+      input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        height: 16px;
+        width: 16px;
+        border-radius: 50%;
+        background: #3c83f6;
+        cursor: pointer;
+        margin-top: -6px;
+        box-shadow: 0 0 0 4px rgba(60, 131, 246, 0.2);
+      }
+
+      input[type="range"]::-webkit-slider-runnable-track {
+        width: 100%;
+        height: 4px;
+        cursor: pointer;
+        background: #314668;
+        border-radius: 2px;
+      }
+
+      input[type="range"]:focus::-webkit-slider-thumb {
+        box-shadow: 0 0 0 6px rgba(60, 131, 246, 0.3);
+      }
+
+      /* Toggle Switch Styling */
+      .toggle-checkbox:checked {
+        right: 0;
+        border-color: #3c83f6;
+      }
+      .toggle-checkbox:checked + .toggle-label {
+        background-color: #3c83f6;
+      }
+    </style>
+  </head>
+  <body
+    class="bg-background-light dark:bg-background-dark font-display text-white min-h-screen flex flex-col antialiased selection:bg-primary selection:text-white"
+  >
+    <!-- Main Wrapper -->
+    <div
+      class="relative flex h-full min-h-screen w-full flex-col overflow-x-hidden"
+    >
+      <!-- Header / Breadcrumbs Area -->
+      <header
+        class="border-b border-border-dark bg-background-dark/50 backdrop-blur-md sticky top-0 z-50"
+      >
+        <div class="px-6 py-4 max-w-7xl mx-auto w-full">
+          <div class="flex items-center gap-2 text-sm">
+            <a
+              class="text-text-subtle hover:text-primary transition-colors flex items-center gap-1"
+              href="#"
+            >
+              <span class="material-symbols-outlined text-[18px]">home</span>
+              Home
+            </a>
+            <span class="text-border-dark">/</span>
+            <a
+              class="text-text-subtle hover:text-primary transition-colors"
+              href="#"
+              >Experiments</a
+            >
+            <span class="text-border-dark">/</span>
+            <span
+              class="text-white font-medium bg-card-dark px-2 py-0.5 rounded text-xs border border-border-dark"
+              >New Run</span
+            >
+          </div>
+        </div>
+      </header>
+      <main
+        class="flex-grow px-6 py-8 max-w-7xl mx-auto w-full flex flex-col gap-8"
+      >
+        <!-- Page Title Section -->
+        <div
+          class="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-border-dark pb-6"
+        >
+          <div class="flex flex-col gap-2">
+            <h1 class="text-3xl md:text-4xl font-bold tracking-tight text-white">
+              New Experiment Run
+            </h1>
+            <p class="text-text-subtle text-base max-w-2xl">
+              Configure parameters for style drift analysis. Define datasets,
+              select models, and set execution constraints.
+            </p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span
+              class="px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 text-xs font-mono border border-blue-500/20"
+              >v2.4.0-beta</span
+            >
+          </div>
+        </div>
+        <!-- Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          <!-- Left Column: Assets (4 columns wide on large screens) -->
+          <div class="lg:col-span-5 flex flex-col gap-6">
+            <div>
+              <h2 class="text-xl font-semibold text-white mb-1 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">folder_open</span>
+                Assets
+              </h2>
+              <p class="text-text-subtle text-sm mb-4">
+                Upload the required datasets for this experiment run.
+              </p>
+            </div>
+            <!-- File Drop Zone 1: Dialogue Dataset -->
+            <div
+              class="group relative flex flex-col gap-3 rounded-xl border border-dashed border-border-dark bg-card-dark/50 p-6 hover:border-primary/50 hover:bg-card-dark transition-all cursor-pointer"
+            >
+              <div class="flex items-start justify-between">
+                <div class="flex items-center gap-3">
+                  <div
+                    class="h-10 w-10 rounded-lg bg-green-500/10 flex items-center justify-center border border-green-500/20 text-green-500"
+                  >
+                    <span class="material-symbols-outlined">check_circle</span>
+                  </div>
+                  <div>
+                    <h3 class="text-white font-medium text-sm">Dialogue Dataset</h3>
+                    <p class="text-text-subtle text-xs font-mono mt-0.5">
+                      dialogues.jsonl
+                    </p>
+                  </div>
+                </div>
+                <button class="text-text-subtle hover:text-white transition-colors">
+                  <span class="material-symbols-outlined">more_vert</span>
+                </button>
+              </div>
+              <div class="flex items-center gap-2 mt-2">
+                <div class="h-1.5 flex-1 bg-border-dark rounded-full overflow-hidden">
+                  <div class="h-full w-full bg-green-500 rounded-full"></div>
+                </div>
+                <span class="text-xs text-green-500 font-medium">100%</span>
+              </div>
+              <div class="flex justify-between text-xs text-text-subtle font-mono">
+                <span>14.2 MB</span>
+                <span>Uploaded</span>
+              </div>
+            </div>
+            <!-- File Drop Zone 2: System Prompts -->
+            <div
+              class="group relative flex flex-col gap-3 rounded-xl border border-dashed border-border-dark bg-card-dark/50 p-6 hover:border-primary/50 hover:bg-card-dark transition-all cursor-pointer"
+            >
+              <div class="flex items-start justify-between">
+                <div class="flex items-center gap-3">
+                  <div
+                    class="h-10 w-10 rounded-lg bg-green-500/10 flex items-center justify-center border border-green-500/20 text-green-500"
+                  >
+                    <span class="material-symbols-outlined">check_circle</span>
+                  </div>
+                  <div>
+                    <h3 class="text-white font-medium text-sm">System Prompts</h3>
+                    <p class="text-text-subtle text-xs font-mono mt-0.5">prompts.json</p>
+                  </div>
+                </div>
+                <button class="text-text-subtle hover:text-white transition-colors">
+                  <span class="material-symbols-outlined">more_vert</span>
+                </button>
+              </div>
+              <div class="flex items-center gap-2 mt-2">
+                <div class="h-1.5 flex-1 bg-border-dark rounded-full overflow-hidden">
+                  <div class="h-full w-full bg-green-500 rounded-full"></div>
+                </div>
+                <span class="text-xs text-green-500 font-medium">100%</span>
+              </div>
+              <div class="flex justify-between text-xs text-text-subtle font-mono">
+                <span>2.8 KB</span>
+                <span>Uploaded</span>
+              </div>
+            </div>
+            <!-- Additional Upload Placeholder -->
+            <div
+              class="group relative flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border-dark bg-transparent p-6 hover:border-text-subtle transition-all cursor-pointer opacity-60 hover:opacity-100"
+            >
+              <span class="material-symbols-outlined text-text-subtle text-3xl"
+                >upload_file</span
+              >
+              <p class="text-text-subtle text-sm">Drop additional context files here</p>
+            </div>
+          </div>
+          <!-- Right Column: Configuration (7 columns wide) -->
+          <div
+            class="lg:col-span-7 flex flex-col gap-8 bg-card-dark rounded-2xl border border-border-dark p-6 md:p-8"
+          >
+            <div>
+              <h2 class="text-xl font-semibold text-white mb-1 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">tune</span>
+                Configuration
+              </h2>
+              <p class="text-text-subtle text-sm">
+                Fine-tune the model parameters and execution strategy.
+              </p>
+            </div>
+            <!-- Model Selection -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="flex flex-col gap-2">
+                <label
+                  class="text-sm font-medium text-white flex items-center justify-between"
+                >
+                  Generator Model
+                  <span
+                    class="material-symbols-outlined text-text-subtle text-[16px] cursor-help"
+                    title="The primary subject model for style drift analysis"
+                    >info</span
+                  >
+                </label>
+                <div class="relative">
+                  <select
+                    class="w-full appearance-none bg-background-dark border border-border-dark text-white rounded-lg py-3 px-4 pr-10 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow"
+                  >
+                    <option value="gpt-4">GPT-4 (OpenAI)</option>
+                    <option value="claude-3">Claude 3 Opus (Anthropic)</option>
+                    <option selected="" value="llama-3">Llama 3 70B (Meta)</option>
+                    <option value="mistral-large">Mistral Large</option>
+                  </select>
+                  <div
+                    class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-text-subtle"
+                  >
+                    <span class="material-symbols-outlined">expand_more</span>
+                  </div>
+                </div>
+                <span class="text-xs text-text-subtle">The primary subject for style drift.</span>
+              </div>
+              <div class="flex flex-col gap-2">
+                <label
+                  class="text-sm font-medium text-white flex items-center justify-between"
+                >
+                  Judge Model
+                  <span
+                    class="material-symbols-outlined text-text-subtle text-[16px] cursor-help"
+                    title="The evaluator model used to score outputs"
+                    >info</span
+                  >
+                </label>
+                <div class="relative">
+                  <select
+                    class="w-full appearance-none bg-background-dark border border-border-dark text-white rounded-lg py-3 px-4 pr-10 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow"
+                  >
+                    <option selected="" value="gpt-4">GPT-4 Turbo (OpenAI)</option>
+                    <option value="claude-3">Claude 3 Sonnet (Anthropic)</option>
+                  </select>
+                  <div
+                    class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-text-subtle"
+                  >
+                    <span class="material-symbols-outlined">expand_more</span>
+                  </div>
+                </div>
+                <span class="text-xs text-text-subtle">Evaluator for output consistency.</span>
+              </div>
+            </div>
+            <hr class="border-border-dark/50" />
+            <!-- Sliders & Numeric Inputs -->
+            <div class="flex flex-col gap-8">
+              <!-- Temperature Slider -->
+              <div class="flex flex-col gap-4">
+                <div class="flex justify-between items-end">
+                  <label class="text-sm font-medium text-white flex gap-2 items-center">
+                    Temperature
+                    <span
+                      class="text-xs bg-primary/20 text-primary px-1.5 py-0.5 rounded font-mono"
+                      >0.7</span
+                    >
+                  </label>
+                  <span class="text-xs text-text-subtle font-mono">Range: 0.0 - 1.0</span>
+                </div>
+                <div class="flex items-center gap-4">
+                  <span class="material-symbols-outlined text-text-subtle text-lg">ac_unit</span>
+                  <input
+                    class="w-full h-2 bg-border-dark rounded-lg appearance-none cursor-pointer"
+                    max="1"
+                    min="0"
+                    step="0.1"
+                    type="range"
+                    value="0.7"
+                  />
+                  <span
+                    class="material-symbols-outlined text-text-subtle text-lg"
+                    >local_fire_department</span
+                  >
+                </div>
+              </div>
+              <!-- Max Turns Input -->
+              <div class="flex flex-col gap-2">
+                <label class="text-sm font-medium text-white">Max Turns</label>
+                <div class="flex items-center gap-4">
+                  <div class="relative flex-1">
+                    <input
+                      class="w-full bg-background-dark border border-border-dark text-white rounded-lg py-3 px-4 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-mono transition-shadow"
+                      type="number"
+                      value="10"
+                    />
+                    <span
+                      class="absolute right-4 top-3 text-text-subtle text-sm font-mono"
+                      >turns</span
+                    >
+                  </div>
+                  <div class="text-xs text-text-subtle max-w-[200px] leading-tight">
+                    Limits the depth of the conversation tree for drift analysis.
+                  </div>
+                </div>
+              </div>
+            </div>
+            <hr class="border-border-dark/50" />
+            <!-- Toggles -->
+            <div class="flex flex-col gap-6">
+              <div class="flex items-center justify-between">
+                <div class="flex flex-col gap-1">
+                  <span class="text-sm font-medium text-white">Resume Strategy</span>
+                  <span class="text-xs text-text-subtle"
+                    >Attempt to resume from last checkpoint if available.</span
+                  >
+                </div>
+                <div
+                  class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in"
+                >
+                  <input
+                    class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-border-dark checked:border-primary transition-all duration-300"
+                    id="toggle1"
+                    name="toggle"
+                    type="checkbox"
+                  />
+                  <label
+                    class="toggle-label block overflow-hidden h-6 rounded-full bg-background-dark border border-border-dark cursor-pointer"
+                    for="toggle1"
+                  ></label>
+                </div>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="flex flex-col gap-1">
+                  <span class="text-sm font-medium text-white">Abort on Error</span>
+                  <span class="text-xs text-text-subtle"
+                    >Stop immediately if an API error occurs during generation.</span
+                  >
+                </div>
+                <div
+                  class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in"
+                >
+                  <input
+                    checked=""
+                    class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-border-dark checked:border-primary transition-all duration-300"
+                    id="toggle2"
+                    name="toggle"
+                    type="checkbox"
+                  />
+                  <label
+                    class="toggle-label block overflow-hidden h-6 rounded-full bg-background-dark border border-border-dark cursor-pointer"
+                    for="toggle2"
+                  ></label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Footer Action Bar -->
+        <div
+          class="sticky bottom-0 z-40 -mx-6 px-6 py-6 bg-background-dark/80 backdrop-blur-xl border-t border-border-dark mt-auto"
+        >
+          <div
+            class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4"
+          >
+            <div class="flex items-center gap-3 text-sm text-text-subtle">
+              <span class="material-symbols-outlined text-green-500">check_circle</span>
+              <span>Configuration valid. Ready to initialize.</span>
+            </div>
+            <div class="flex gap-3 w-full sm:w-auto">
+              <button
+                class="px-6 py-3 rounded-lg border border-border-dark bg-background-dark text-white font-medium hover:bg-card-dark transition-colors w-full sm:w-auto"
+              >
+                Save Draft
+              </button>
+              <button
+                class="px-8 py-3 rounded-lg bg-primary hover:bg-primary-dark text-white font-bold shadow-lg shadow-primary/20 transition-all active:scale-[0.98] w-full sm:w-auto flex items-center justify-center gap-2"
+              >
+                <span class="material-symbols-outlined">play_arrow</span>
+                Initialize Run
+              </button>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>
