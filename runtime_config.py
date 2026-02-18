@@ -32,6 +32,7 @@ class RuntimeConfig:
     flush_policy: str
     input_compatibility_mode: bool
     max_history_messages: int
+    max_context_chars: int
     llm3: LLMConfig
     llm4: LLMConfig
 
@@ -65,6 +66,7 @@ def load_config(path: str | Path) -> RuntimeConfig:
         flush_policy=str(raw.get("flush_policy", "per_turn")),
         input_compatibility_mode=bool(raw.get("input_compatibility_mode", False)),
         max_history_messages=int(raw.get("max_history_messages", 20)),
+        max_context_chars=int(raw.get("max_context_chars", 8000)),
         llm3=_load_llm_config(raw.get("llm3", {}), default_model="deepseek-chat"),
         llm4=_load_llm_config(raw.get("llm4", {}), default_model="deepseek-chat"),
     )

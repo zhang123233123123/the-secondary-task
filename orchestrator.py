@@ -38,8 +38,25 @@ def _build_run_id() -> str:
 
 def _truncate_history(
     messages: list[dict[str, str]],
+    policy: str,
     max_history_messages: int,
+    max_context_chars: int,
 ) -> tuple[list[dict[str, str]], bool]:
+    if policy == "token_budget":
+        # Approximate token budget using character budget to keep implementation dependency-free.
+        kept = [messages[0]]
+        used_chars = len(messages[0].get("content", ""))
+        tail: list[dict[str, str]] = []
+        for item in reversed(messages[1:]):
+            item_chars = len(item.get("content", ""))
+            if used_chars + item_chars > max_context_chars:
+                break
+            tail.append(item)
+            used_chars += item_chars
+        tail.reverse()
+        kept.extend(tail)
+        return kept, len(kept) != len(messages)
+
     if len(messages) <= max_history_messages:
         return messages, False
     # Keep system prompt and last N-1 exchanges/messages.
@@ -140,7 +157,9 @@ def run_experiment(
                     history.append({"role": "user", "content": user_text})
                     prompt_messages, context_truncated = _truncate_history(
                         history,
-                        config.max_history_messages,
+                        policy=config.truncation_policy,
+                        max_history_messages=config.max_history_messages,
+                        max_context_chars=config.max_context_chars,
                     )
 
                     model_reply = ""
@@ -238,6 +257,8 @@ def run_experiment(
 
                     if error_stage == "generate" and config.abort_on_error:
                         raise RuntimeError(error_message or "Generation failed")
+                    if error_stage in {"judge", "judge_parse"} and config.abort_on_error:
+                        raise RuntimeError(error_message or "Judge failed")
 
     finally:
         writer.close()
