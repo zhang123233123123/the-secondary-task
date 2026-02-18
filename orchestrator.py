@@ -14,6 +14,7 @@ from llm_clients import (
     parse_judge_json,
 )
 from output_writer import JsonlWriter, write_summary
+from resume import load_resume_state
 from runtime_config import RuntimeConfig
 
 CONDITIONS_ORDER = ("default", "evil", "distant")
@@ -105,6 +106,7 @@ def run_experiment(
     stats = RunStats()
 
     writer = JsonlWriter(config.output_dir, actual_run_id, config.flush_policy)
+    resume_state = load_resume_state(writer.results_path)
     llm3_client = OpenAICompatibleChatClient(config.llm3)
     llm4_client = OpenAICompatibleChatClient(config.llm4)
 
@@ -112,11 +114,28 @@ def run_experiment(
         for dialogue in dialogues:
             for condition in CONDITIONS_ORDER:
                 system_prompt = prompts.conditions[condition]
+                combo_key = (dialogue.dialogue_id, condition)
+                combo_state = resume_state.combo_states.get(combo_key)
+                if (
+                    config.resume_strategy == "skip"
+                    and combo_state is not None
+                    and combo_state.processed_turns
+                ):
+                    continue
+
                 history: list[dict[str, str]] = [{"role": "system", "content": system_prompt}]
+                processed_turns: set[int] = set()
+                if config.resume_strategy == "reconstruct" and combo_state is not None:
+                    history.extend(combo_state.history)
+                    processed_turns = set(combo_state.processed_turns)
+
                 max_turns = min(len(dialogue.turns), config.max_turns)
                 stats.expected_rows += max_turns
 
                 for turn_index in range(1, max_turns + 1):
+                    if turn_index in processed_turns:
+                        continue
+
                     user_text = dialogue.turns[turn_index - 1].text
                     history.append({"role": "user", "content": user_text})
                     prompt_messages, context_truncated = _truncate_history(
@@ -223,18 +242,24 @@ def run_experiment(
     finally:
         writer.close()
 
-    error_rows = stats.generate_errors + stats.judge_errors + stats.judge_parse_errors
+    final_resume_state = load_resume_state(writer.results_path)
+    total_rows = final_resume_state.existing_rows
+    error_rows = final_resume_state.error_rows
     summary = {
         "run_id": actual_run_id,
         "expected_rows": stats.expected_rows,
-        "actual_rows": stats.actual_rows,
+        "actual_rows": total_rows,
+        "new_rows_written": writer.rows_written,
         "error_rows": error_rows,
-        "error_rate": (error_rows / stats.actual_rows) if stats.actual_rows else 0.0,
-        "generate_errors": stats.generate_errors,
-        "judge_errors": stats.judge_errors,
-        "judge_parse_errors": stats.judge_parse_errors,
-        "truncated_count": stats.truncated_count,
-        "refusal_count": stats.refusal_count,
+        "error_rate": (error_rows / total_rows) if total_rows else 0.0,
+        "generate_errors": final_resume_state.generate_errors,
+        "judge_errors": final_resume_state.judge_errors,
+        "judge_parse_errors": final_resume_state.judge_parse_errors,
+        "new_generate_errors": stats.generate_errors,
+        "new_judge_errors": stats.judge_errors,
+        "new_judge_parse_errors": stats.judge_parse_errors,
+        "truncated_count": final_resume_state.truncated_count,
+        "refusal_count": final_resume_state.refusal_count,
         **hashes,
     }
     summary_path = write_summary(config.output_dir, actual_run_id, summary)
