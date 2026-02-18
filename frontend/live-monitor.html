@@ -140,7 +140,7 @@
           <h2 class="text-white text-base font-bold leading-tight tracking-tight">
             StyleDrift Lab
             <span class="text-slate-500 font-normal mx-2">/</span>
-            <span class="font-mono text-primary text-sm">run_20231027_a1</span>
+            <span id="monitor-run-id" class="font-mono text-primary text-sm">run_20231027_a1</span>
           </h2>
         </div>
       </div>
@@ -172,6 +172,13 @@
         </div>
       </div>
       <div class="flex gap-2">
+        <button
+          id="monitor-refresh-btn"
+          class="flex items-center justify-center rounded-md h-8 px-3 bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors text-xs font-bold uppercase tracking-wider"
+        >
+          <span class="material-symbols-outlined text-[16px] mr-1.5">refresh</span>
+          Refresh
+        </button>
         <button
           class="flex items-center justify-center rounded-md h-8 px-3 bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors text-xs font-bold uppercase tracking-wider"
         >
@@ -295,6 +302,18 @@
           </h3>
         </div>
         <div class="p-6 flex flex-col gap-8 overflow-y-auto">
+          <div class="bg-background-dark rounded-lg border border-surface-border p-4 space-y-2">
+            <div class="flex items-center justify-between text-xs">
+              <span class="text-slate-500">Actual Rows</span>
+              <span id="monitor-actual-rows" class="text-white font-mono">-</span>
+            </div>
+            <div class="flex items-center justify-between text-xs">
+              <span class="text-slate-500">Error Rate</span>
+              <span id="monitor-error-rate" class="text-white font-mono">-</span>
+            </div>
+            <div class="text-xs text-slate-500 pt-1">Latest Turn</div>
+            <div id="monitor-latest-turn" class="text-xs text-slate-300 font-mono break-all">-</div>
+          </div>
           <!-- Radial Gauges Row -->
           <div class="grid grid-cols-3 gap-2">
             <!-- Gauge 1: Harmfulness -->
@@ -472,5 +491,57 @@
         </div>
       </div>
     </footer>
+    <script>
+      (function () {
+        const refreshBtn = document.getElementById("monitor-refresh-btn");
+        const runIdEl = document.getElementById("monitor-run-id");
+        const actualRowsEl = document.getElementById("monitor-actual-rows");
+        const errorRateEl = document.getElementById("monitor-error-rate");
+        const latestTurnEl = document.getElementById("monitor-latest-turn");
+
+        async function readLatestTurn(resultsFile) {
+          const response = await fetch("/output/" + resultsFile);
+          if (!response.ok) throw new Error("Failed to load results file");
+          const text = await response.text();
+          const lines = text.split("\n").filter(Boolean);
+          if (!lines.length) return null;
+          return JSON.parse(lines[lines.length - 1]);
+        }
+
+        async function refreshMonitor() {
+          try {
+            const runsResp = await fetch("/runs");
+            if (!runsResp.ok) throw new Error("Failed to load runs");
+            const runsData = await runsResp.json();
+            const latestId = runsData.latest_run_id;
+            if (!latestId) throw new Error("No run found");
+            if (runIdEl) runIdEl.textContent = latestId;
+            const runItem = (runsData.runs || []).find((x) => x.run_id === latestId);
+            if (!runItem) throw new Error("Run metadata missing");
+
+            const summaryResp = await fetch("/output/" + runItem.summary_file);
+            if (!summaryResp.ok) throw new Error("Failed to load summary");
+            const summary = await summaryResp.json();
+            if (actualRowsEl) actualRowsEl.textContent = String(summary.actual_rows ?? "-");
+            if (errorRateEl) {
+              const rate = typeof summary.error_rate === "number" ? summary.error_rate : null;
+              errorRateEl.textContent = rate === null ? "-" : rate.toFixed(3);
+            }
+
+            const latestTurn = await readLatestTurn(runItem.results_file);
+            if (latestTurnEl) {
+              latestTurnEl.textContent = latestTurn
+                ? `${latestTurn.dialogue_id} | ${latestTurn.condition} | turn=${latestTurn.turn_index} | error=${latestTurn.error_stage ?? "none"}`
+                : "No turn rows";
+            }
+          } catch (error) {
+            if (latestTurnEl) latestTurnEl.textContent = "Refresh failed: " + String(error.message || error);
+          }
+        }
+
+        if (refreshBtn) refreshBtn.addEventListener("click", refreshMonitor);
+        refreshMonitor();
+      })();
+    </script>
   </body>
 </html>
