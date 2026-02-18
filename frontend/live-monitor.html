@@ -311,6 +311,10 @@
               <span class="text-slate-500">Error Rate</span>
               <span id="monitor-error-rate" class="text-white font-mono">-</span>
             </div>
+            <div class="flex items-center justify-between text-xs">
+              <span class="text-slate-500">Runtime Status</span>
+              <span id="monitor-runtime-status" class="text-white font-mono">-</span>
+            </div>
             <div class="text-xs text-slate-500 pt-1">Latest Turn</div>
             <div id="monitor-latest-turn" class="text-xs text-slate-300 font-mono break-all">-</div>
           </div>
@@ -497,7 +501,10 @@
         const runIdEl = document.getElementById("monitor-run-id");
         const actualRowsEl = document.getElementById("monitor-actual-rows");
         const errorRateEl = document.getElementById("monitor-error-rate");
+        const runtimeStatusEl = document.getElementById("monitor-runtime-status");
         const latestTurnEl = document.getElementById("monitor-latest-turn");
+        const POLL_MS = 2000;
+        let timerId = null;
 
         async function readLatestTurn(resultsFile) {
           const response = await fetch("/output/" + resultsFile);
@@ -518,6 +525,11 @@
             if (runIdEl) runIdEl.textContent = latestId;
             const runItem = (runsData.runs || []).find((x) => x.run_id === latestId);
             if (!runItem) throw new Error("Run metadata missing");
+            const statusResp = await fetch("/run/status?run_id=" + encodeURIComponent(latestId));
+            if (statusResp.ok) {
+              const statusData = await statusResp.json();
+              if (runtimeStatusEl) runtimeStatusEl.textContent = String(statusData.runtime_status || "-");
+            }
 
             const summaryResp = await fetch("/output/" + runItem.summary_file);
             if (!summaryResp.ok) throw new Error("Failed to load summary");
@@ -536,11 +548,29 @@
             }
           } catch (error) {
             if (latestTurnEl) latestTurnEl.textContent = "Refresh failed: " + String(error.message || error);
+            if (runtimeStatusEl) runtimeStatusEl.textContent = "error";
           }
         }
 
         if (refreshBtn) refreshBtn.addEventListener("click", refreshMonitor);
+        function startPolling() {
+          if (timerId !== null) return;
+          timerId = window.setInterval(refreshMonitor, POLL_MS);
+        }
+        function stopPolling() {
+          if (timerId === null) return;
+          window.clearInterval(timerId);
+          timerId = null;
+        }
+        document.addEventListener("visibilitychange", function () {
+          if (document.hidden) stopPolling();
+          else {
+            refreshMonitor();
+            startPolling();
+          }
+        });
         refreshMonitor();
+        startPolling();
       })();
     </script>
   </body>
