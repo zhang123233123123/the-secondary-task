@@ -127,6 +127,7 @@ def run_experiment(
     resume_state = load_resume_state(writer.results_path)
     llm3_client = OpenAICompatibleChatClient(config.llm3)
     llm4_client = OpenAICompatibleChatClient(config.llm4)
+    abort_reason: str | None = None
 
     try:
         for dialogue in dialogues:
@@ -261,6 +262,8 @@ def run_experiment(
                         raise RuntimeError(error_message or "Generation failed")
                     if error_stage in {"judge", "judge_parse"} and config.abort_on_error:
                         raise RuntimeError(error_message or "Judge failed")
+    except RuntimeError as exc:
+        abort_reason = str(exc)
 
     finally:
         writer.close()
@@ -283,9 +286,13 @@ def run_experiment(
         "new_judge_parse_errors": stats.judge_parse_errors,
         "truncated_count": final_resume_state.truncated_count,
         "refusal_count": final_resume_state.refusal_count,
+        "aborted": abort_reason is not None,
+        "abort_reason": abort_reason,
         **hashes,
     }
     summary_path = write_summary(config.output_dir, actual_run_id, summary)
+    if abort_reason is not None:
+        raise RuntimeError(abort_reason)
     return {
         "run_id": actual_run_id,
         "summary_path": str(summary_path),

@@ -20,20 +20,24 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    config = load_config(args.config)
-    result = run_experiment(
-        config=config,
-        config_path=args.config,
-        dry_run=args.dry_run,
-        run_id=args.run_id,
-    )
-    print(
-        "Run complete. "
-        f"run_id={result['run_id']} "
-        f"results={result['results_path']} "
-        f"summary={result['summary_path']}"
-    )
-    return 0
+    try:
+        config = load_config(args.config)
+        result = run_experiment(
+            config=config,
+            config_path=args.config,
+            dry_run=args.dry_run,
+            run_id=args.run_id,
+        )
+        print(
+            "Run complete. "
+            f"run_id={result['run_id']} "
+            f"results={result['results_path']} "
+            f"summary={result['summary_path']}"
+        )
+        return 0
+    except Exception as exc:  # noqa: BLE001
+        print(f"Run failed: {exc}")
+        return 1
 
 
 if __name__ == "__main__":
