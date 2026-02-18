@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 
+from input_loader import load_dialogues, load_prompts
 from runtime_config import load_config
 
 
@@ -20,8 +21,17 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     config = load_config(args.config)
+    dialogues = load_dialogues(
+        config.dialogues_path,
+        compatibility_mode=config.input_compatibility_mode,
+    )
+    prompts = load_prompts(config.prompts_path)
     print(
-        f"Control agent initialized. output_dir={config.output_dir} dry_run={args.dry_run}"
+        "Control agent initialized. "
+        f"dialogues={len(dialogues)} "
+        f"conditions={len(prompts.conditions)} "
+        f"output_dir={config.output_dir} "
+        f"dry_run={args.dry_run}"
     )
     return 0
 

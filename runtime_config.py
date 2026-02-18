@@ -9,6 +9,8 @@ import yaml
 
 @dataclass
 class RuntimeConfig:
+    dialogues_path: str
+    prompts_path: str
     max_turns: int
     output_dir: str
     resume_strategy: str
@@ -17,6 +19,7 @@ class RuntimeConfig:
     timeout_seconds: float
     truncation_policy: str
     flush_policy: str
+    input_compatibility_mode: bool
 
 
 def load_config(path: str | Path) -> RuntimeConfig:
@@ -24,6 +27,8 @@ def load_config(path: str | Path) -> RuntimeConfig:
     raw: dict[str, Any] = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
 
     return RuntimeConfig(
+        dialogues_path=str(raw.get("dialogues_path", "dialogues.jsonl")),
+        prompts_path=str(raw.get("prompts_path", "prompts.json")),
         max_turns=int(raw.get("max_turns", 10)),
         output_dir=str(raw.get("output_dir", "output")),
         resume_strategy=str(raw.get("resume_strategy", "reconstruct")),
@@ -32,4 +37,5 @@ def load_config(path: str | Path) -> RuntimeConfig:
         timeout_seconds=float(raw.get("timeout", 30)),
         truncation_policy=str(raw.get("truncation_policy", "sliding_window")),
         flush_policy=str(raw.get("flush_policy", "per_turn")),
+        input_compatibility_mode=bool(raw.get("input_compatibility_mode", False)),
     )

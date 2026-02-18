@@ -1,0 +1,27 @@
+dialogues_path: dialogues.jsonl
+prompts_path: prompts.json
+max_turns: 10
+output_dir: output
+resume_strategy: reconstruct
+flush_policy: per_turn
+retries: 3
+timeout: 30
+truncation_policy: sliding_window
+abort_on_error: false
+input_compatibility_mode: true
+
+llm3:
+  provider: deepseek
+  model: deepseek-chat
+  api_key_env: DEEPSEEK_API_KEY
+  base_url: https://api.deepseek.com/v1
+  temperature: 0.7
+  top_p: 1.0
+
+llm4:
+  provider: deepseek
+  model: deepseek-chat
+  api_key_env: DEEPSEEK_API_KEY
+  base_url: https://api.deepseek.com/v1
+  temperature: 0.0
+  top_p: 1.0
