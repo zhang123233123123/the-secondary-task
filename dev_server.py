@@ -6,11 +6,25 @@ from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+from backend.runs_index import build_runs_index, write_runs_index
+
 
 class DevRequestHandler(SimpleHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802
         if self.path == "/health":
             payload = json.dumps({"ok": True}).encode("utf-8")
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(payload)))
+            self.end_headers()
+            self.wfile.write(payload)
+            return
+        if self.path == "/runs":
+            output_dir = Path(self.directory or ".") / "output"
+            index_path = output_dir / "runs_index.json"
+            if not index_path.exists():
+                write_runs_index(output_dir)
+            payload = json.dumps(build_runs_index(output_dir), ensure_ascii=False).encode("utf-8")
             self.send_response(HTTPStatus.OK)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Content-Length", str(len(payload)))

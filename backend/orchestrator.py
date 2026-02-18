@@ -15,6 +15,7 @@ from .llm_clients import (
 )
 from .output_writer import JsonlWriter, write_summary
 from .resume import load_resume_state
+from .runs_index import write_runs_index
 from .schema_validation import validate_with_simple_schema
 from .runtime_config import RuntimeConfig
 
@@ -291,6 +292,7 @@ def run_experiment(
         **hashes,
     }
     summary_path = write_summary(config.output_dir, actual_run_id, summary)
+    write_runs_index(config.output_dir)
     if abort_reason is not None:
         raise RuntimeError(abort_reason)
     return {
