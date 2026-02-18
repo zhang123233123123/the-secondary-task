@@ -9,12 +9,13 @@ import uuid
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 from backend.runs_index import build_runs_index, write_runs_index
 
 
 class DevRequestHandler(SimpleHTTPRequestHandler):
-    jobs: dict[str, subprocess.Popen] = {}
+    jobs: dict[str, dict] = {}
 
     def _json_response(self, status: int, payload: dict) -> None:
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -29,16 +30,77 @@ class DevRequestHandler(SimpleHTTPRequestHandler):
         raw = self.rfile.read(length) if length > 0 else b"{}"
         return json.loads(raw.decode("utf-8"))
 
+    @classmethod
+    def _runtime_status(cls, run_id: str, root: Path) -> str:
+        job = cls.jobs.get(run_id)
+        summary_path = root / "output" / f"run_summary_{run_id}.json"
+        if job is None:
+            return "succeeded" if summary_path.exists() else "unknown"
+
+        process: subprocess.Popen = job["process"]
+        code = process.poll()
+        if code is None:
+            return "running"
+        if summary_path.exists() and code == 0:
+            return "succeeded"
+        return "failed"
+
+    @classmethod
+    def _job_payload(cls, run_id: str, root: Path) -> dict:
+        job = cls.jobs.get(run_id)
+        summary_file = f"run_summary_{run_id}.json"
+        results_file = f"results_{run_id}.jsonl"
+        status = cls._runtime_status(run_id, root)
+        payload = {
+            "run_id": run_id,
+            "runtime_status": status,
+            "summary_file": summary_file,
+            "results_file": results_file,
+            "summary_exists": (root / "output" / summary_file).exists(),
+            "results_exists": (root / "output" / results_file).exists(),
+        }
+        if job is not None:
+            payload["pid"] = job["pid"]
+            payload["started_at_utc"] = job["started_at_utc"]
+            payload["dry_run"] = job["dry_run"]
+            payload["config_path"] = job["config_path"]
+        return payload
+
     def do_GET(self) -> None:  # noqa: N802
+        root = Path(self.directory or ".").resolve()
         if self.path == "/health":
             self._json_response(HTTPStatus.OK, {"ok": True})
             return
-        if self.path == "/runs":
-            output_dir = Path(self.directory or ".") / "output"
+        parsed = urlparse(self.path)
+        if parsed.path == "/runs":
+            output_dir = root / "output"
             index_path = output_dir / "runs_index.json"
             if not index_path.exists():
                 write_runs_index(output_dir)
-            self._json_response(HTTPStatus.OK, build_runs_index(output_dir))
+            index = build_runs_index(output_dir)
+
+            by_id = {item["run_id"]: item for item in index["runs"]}
+            for run_item in by_id.values():
+                run_item["runtime_status"] = self._runtime_status(run_item["run_id"], root)
+            for run_id in self.jobs:
+                if run_id not in by_id:
+                    by_id[run_id] = self._job_payload(run_id, root)
+
+            runs = sorted(
+                by_id.values(),
+                key=lambda item: item.get("created_at_utc", item.get("started_at_utc", "")),
+                reverse=True,
+            )
+            latest_run_id = runs[0]["run_id"] if runs else None
+            self._json_response(HTTPStatus.OK, {"latest_run_id": latest_run_id, "runs": runs})
+            return
+        if parsed.path == "/run/status":
+            query = parse_qs(parsed.query)
+            run_id = query.get("run_id", [None])[0]
+            if not run_id:
+                self._json_response(HTTPStatus.BAD_REQUEST, {"error": "run_id is required"})
+                return
+            self._json_response(HTTPStatus.OK, self._job_payload(str(run_id), root))
             return
         super().do_GET()
 
@@ -73,7 +135,13 @@ class DevRequestHandler(SimpleHTTPRequestHandler):
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
-        self.jobs[run_id] = process
+        self.jobs[run_id] = {
+            "process": process,
+            "pid": process.pid,
+            "started_at_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+            "dry_run": dry_run,
+            "config_path": config_path,
+        }
         self._json_response(
             HTTPStatus.ACCEPTED,
             {
