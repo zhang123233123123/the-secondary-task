@@ -434,15 +434,20 @@
           >
             <div class="flex items-center gap-3 text-sm text-text-subtle">
               <span class="material-symbols-outlined text-green-500">check_circle</span>
-              <span>Configuration valid. Ready to initialize.</span>
+              <span id="setup-status-text">Configuration valid. Ready to initialize.</span>
             </div>
             <div class="flex gap-3 w-full sm:w-auto">
+              <label class="flex items-center gap-2 text-xs text-text-subtle px-2">
+                <input id="dry-run-checkbox" type="checkbox" class="rounded border-border-dark bg-background-dark" />
+                Dry Run
+              </label>
               <button
                 class="px-6 py-3 rounded-lg border border-border-dark bg-background-dark text-white font-medium hover:bg-card-dark transition-colors w-full sm:w-auto"
               >
                 Save Draft
               </button>
               <button
+                id="initialize-run-btn"
                 class="px-8 py-3 rounded-lg bg-primary hover:bg-primary-dark text-white font-bold shadow-lg shadow-primary/20 transition-all active:scale-[0.98] w-full sm:w-auto flex items-center justify-center gap-2"
               >
                 <span class="material-symbols-outlined">play_arrow</span>
@@ -453,5 +458,47 @@
         </div>
       </main>
     </div>
+    <script>
+      (function () {
+        const statusText = document.getElementById("setup-status-text");
+        const startBtn = document.getElementById("initialize-run-btn");
+        const dryRunCheckbox = document.getElementById("dry-run-checkbox");
+
+        async function startRun() {
+          if (!startBtn) return;
+          startBtn.disabled = true;
+          startBtn.classList.add("opacity-60", "cursor-not-allowed");
+          if (statusText) statusText.textContent = "Starting run...";
+
+          try {
+            const response = await fetch("/run/start", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                config_path: "config.yaml",
+                dry_run: !!(dryRunCheckbox && dryRunCheckbox.checked),
+              }),
+            });
+            const data = await response.json();
+            if (!response.ok || !data.accepted) {
+              throw new Error(data.error || "Failed to start run");
+            }
+            if (statusText) {
+              statusText.innerHTML =
+                'Run started: <span class="text-primary font-mono">' + data.run_id + "</span>";
+            }
+          } catch (error) {
+            if (statusText) {
+              statusText.textContent = "Start failed: " + String(error.message || error);
+            }
+          } finally {
+            startBtn.disabled = false;
+            startBtn.classList.remove("opacity-60", "cursor-not-allowed");
+          }
+        }
+
+        if (startBtn) startBtn.addEventListener("click", startRun);
+      })();
+    </script>
   </body>
 </html>
