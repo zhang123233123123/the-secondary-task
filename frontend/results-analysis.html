@@ -93,23 +93,25 @@
           <!-- Navigation Links -->
           <nav class="hidden md:flex items-center gap-8">
             <a
+              id="results-open-setup"
               class="text-slate-400 hover:text-white text-sm font-medium transition-colors"
-              href="#"
-              >Dashboard</a
+              href="/frontend/experiment-setup.html"
+              >Setup</a
             >
             <a
               class="text-white text-sm font-medium bg-primary/10 px-3 py-1.5 rounded-lg border border-primary/20"
-              href="#"
+              href="/frontend/results-analysis.html"
               >Experiments</a
             >
             <a
+              id="results-open-monitor"
               class="text-slate-400 hover:text-white text-sm font-medium transition-colors"
-              href="#"
-              >Models</a
+              href="/frontend/live-monitor.html"
+              >Monitor</a
             >
             <a
               class="text-slate-400 hover:text-white text-sm font-medium transition-colors"
-              href="#"
+              href="/frontend/results-analysis.html"
               >Settings</a
             >
           </nav>
@@ -157,6 +159,7 @@
         </div>
         <div class="flex items-center gap-3">
           <button
+            id="results-download-btn"
             class="group flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border-dark bg-surface-dark hover:bg-slate-800 text-slate-300 text-sm font-medium transition-all"
           >
             <span class="material-symbols-outlined text-[18px]">download</span>
@@ -649,6 +652,9 @@
     <script>
       (function () {
         const refreshBtn = document.getElementById("results-refresh-btn");
+        const downloadBtn = document.getElementById("results-download-btn");
+        const setupLink = document.getElementById("results-open-setup");
+        const monitorLink = document.getElementById("results-open-monitor");
         const searchInput = document.getElementById("results-search-input");
         const domainFilter = document.getElementById("results-domain-filter");
         const conditionFilter = document.getElementById("results-condition-filter");
@@ -663,11 +669,24 @@
         const prevMobileBtn = document.getElementById("results-prev-mobile");
         const nextMobileBtn = document.getElementById("results-next-mobile");
         const tableBody = document.getElementById("results-table-body");
+        const params = new URLSearchParams(window.location.search);
 
         let allRows = [];
         let filteredRows = [];
         let currentPage = 1;
         const pageSize = 50;
+        let selectedRunId = params.get("run_id");
+        let selectedResultsFile = null;
+
+        function withRunId(path, runId) {
+          if (!runId) return path;
+          return path + "?run_id=" + encodeURIComponent(runId);
+        }
+
+        function syncLinks(runId) {
+          if (setupLink) setupLink.href = withRunId("/frontend/experiment-setup.html", runId);
+          if (monitorLink) monitorLink.href = withRunId("/frontend/live-monitor.html", runId);
+        }
 
         function esc(value) {
           return String(value ?? "")
@@ -728,16 +747,24 @@
             const runsResp = await fetch("/runs");
             if (!runsResp.ok) throw new Error("Failed to load runs index");
             const runsData = await runsResp.json();
-            const latestId = runsData.latest_run_id;
-            if (!latestId) throw new Error("No run found");
-            const runItem = (runsData.runs || []).find((x) => x.run_id === latestId);
+            let targetRunId = selectedRunId || runsData.latest_run_id;
+            if (!targetRunId) throw new Error("No run found");
+            let runItem = (runsData.runs || []).find((x) => x.run_id === targetRunId);
+            if (!runItem && runsData.latest_run_id) {
+              targetRunId = runsData.latest_run_id;
+              runItem = (runsData.runs || []).find((x) => x.run_id === targetRunId);
+            }
             if (!runItem) throw new Error("Run metadata missing");
+            selectedRunId = runItem.run_id;
+            selectedResultsFile = runItem.results_file;
+            window.history.replaceState({}, "", withRunId("/frontend/results-analysis.html", selectedRunId));
+            syncLinks(selectedRunId);
 
             const summaryResp = await fetch("/output/" + runItem.summary_file);
             if (!summaryResp.ok) throw new Error("Failed to load summary");
             const summary = await summaryResp.json();
             if (metaText) {
-              metaText.textContent = `Run ${latestId}: actual_rows=${summary.actual_rows}, error_rows=${summary.error_rows}, error_rate=${Number(summary.error_rate || 0).toFixed(3)}, refusal_count=${summary.refusal_count}`;
+              metaText.textContent = `Run ${selectedRunId}: actual_rows=${summary.actual_rows}, error_rows=${summary.error_rows}, error_rate=${Number(summary.error_rate || 0).toFixed(3)}, refusal_count=${summary.refusal_count}`;
             }
 
             const resultsResp = await fetch("/output/" + runItem.results_file);
@@ -769,6 +796,12 @@
         }
 
         if (refreshBtn) refreshBtn.addEventListener("click", refreshData);
+        if (downloadBtn) {
+          downloadBtn.addEventListener("click", function () {
+            if (!selectedResultsFile) return;
+            window.location.href = "/output/" + selectedResultsFile;
+          });
+        }
         if (searchInput) searchInput.addEventListener("input", applyFilters);
         if (domainFilter) domainFilter.addEventListener("change", applyFilters);
         if (conditionFilter) conditionFilter.addEventListener("change", applyFilters);
@@ -776,6 +809,7 @@
         if (nextBtn) nextBtn.addEventListener("click", goNext);
         if (prevMobileBtn) prevMobileBtn.addEventListener("click", goPrev);
         if (nextMobileBtn) nextMobileBtn.addEventListener("click", goNext);
+        syncLinks(selectedRunId);
         refreshData();
       })();
     </script>

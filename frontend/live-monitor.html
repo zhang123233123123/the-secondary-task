@@ -172,6 +172,20 @@
         </div>
       </div>
       <div class="flex gap-2">
+        <a
+          id="monitor-open-setup"
+          class="flex items-center justify-center rounded-md h-8 px-3 bg-background-dark text-slate-300 border border-surface-border hover:bg-surface-border transition-colors text-xs font-bold uppercase tracking-wider"
+          href="/frontend/experiment-setup.html"
+        >
+          Setup
+        </a>
+        <a
+          id="monitor-open-results"
+          class="flex items-center justify-center rounded-md h-8 px-3 bg-background-dark text-slate-300 border border-surface-border hover:bg-surface-border transition-colors text-xs font-bold uppercase tracking-wider"
+          href="/frontend/results-analysis.html"
+        >
+          Results
+        </a>
         <button
           id="monitor-refresh-btn"
           class="flex items-center justify-center rounded-md h-8 px-3 bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors text-xs font-bold uppercase tracking-wider"
@@ -499,12 +513,26 @@
       (function () {
         const refreshBtn = document.getElementById("monitor-refresh-btn");
         const runIdEl = document.getElementById("monitor-run-id");
+        const setupLink = document.getElementById("monitor-open-setup");
+        const resultsLink = document.getElementById("monitor-open-results");
         const actualRowsEl = document.getElementById("monitor-actual-rows");
         const errorRateEl = document.getElementById("monitor-error-rate");
         const runtimeStatusEl = document.getElementById("monitor-runtime-status");
         const latestTurnEl = document.getElementById("monitor-latest-turn");
+        const params = new URLSearchParams(window.location.search);
+        let selectedRunId = params.get("run_id");
         const POLL_MS = 2000;
         let timerId = null;
+
+        function withRunId(path, runId) {
+          if (!runId) return path;
+          return path + "?run_id=" + encodeURIComponent(runId);
+        }
+
+        function syncLinks(runId) {
+          if (setupLink) setupLink.href = withRunId("/frontend/experiment-setup.html", runId);
+          if (resultsLink) resultsLink.href = withRunId("/frontend/results-analysis.html", runId);
+        }
 
         async function readLatestTurn(resultsFile) {
           const response = await fetch("/output/" + resultsFile);
@@ -520,12 +548,20 @@
             const runsResp = await fetch("/runs");
             if (!runsResp.ok) throw new Error("Failed to load runs");
             const runsData = await runsResp.json();
-            const latestId = runsData.latest_run_id;
-            if (!latestId) throw new Error("No run found");
-            if (runIdEl) runIdEl.textContent = latestId;
-            const runItem = (runsData.runs || []).find((x) => x.run_id === latestId);
+            let targetRunId = selectedRunId || runsData.latest_run_id;
+            if (!targetRunId) throw new Error("No run found");
+            let runItem = (runsData.runs || []).find((x) => x.run_id === targetRunId);
+            if (!runItem && runsData.latest_run_id) {
+              targetRunId = runsData.latest_run_id;
+              runItem = (runsData.runs || []).find((x) => x.run_id === targetRunId);
+            }
             if (!runItem) throw new Error("Run metadata missing");
-            const statusResp = await fetch("/run/status?run_id=" + encodeURIComponent(latestId));
+            selectedRunId = runItem.run_id;
+            if (runIdEl) runIdEl.textContent = selectedRunId;
+            window.history.replaceState({}, "", withRunId("/frontend/live-monitor.html", selectedRunId));
+            syncLinks(selectedRunId);
+
+            const statusResp = await fetch("/run/status?run_id=" + encodeURIComponent(selectedRunId));
             if (statusResp.ok) {
               const statusData = await statusResp.json();
               if (runtimeStatusEl) runtimeStatusEl.textContent = String(statusData.runtime_status || "-");
@@ -569,6 +605,7 @@
             startPolling();
           }
         });
+        syncLinks(selectedRunId);
         refreshMonitor();
         startPolling();
       })();

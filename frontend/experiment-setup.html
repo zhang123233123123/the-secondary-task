@@ -122,16 +122,18 @@
         <div class="px-6 py-4 max-w-7xl mx-auto w-full">
           <div class="flex items-center gap-2 text-sm">
             <a
+              id="setup-nav-home"
               class="text-text-subtle hover:text-primary transition-colors flex items-center gap-1"
-              href="#"
+              href="/frontend/experiment-setup.html"
             >
               <span class="material-symbols-outlined text-[18px]">home</span>
               Home
             </a>
             <span class="text-border-dark">/</span>
             <a
+              id="setup-nav-exp"
               class="text-text-subtle hover:text-primary transition-colors"
-              href="#"
+              href="/frontend/results-analysis.html"
               >Experiments</a
             >
             <span class="text-border-dark">/</span>
@@ -454,6 +456,10 @@
                 Initialize Run
               </button>
             </div>
+            <div id="setup-run-links" class="hidden flex items-center gap-2 text-xs">
+              <a id="setup-open-monitor" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white" href="/frontend/live-monitor.html">Open Monitor</a>
+              <a id="setup-open-results" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white" href="/frontend/results-analysis.html">Open Results</a>
+            </div>
           </div>
         </div>
       </main>
@@ -463,7 +469,30 @@
         const statusText = document.getElementById("setup-status-text");
         const startBtn = document.getElementById("initialize-run-btn");
         const dryRunCheckbox = document.getElementById("dry-run-checkbox");
+        const monitorLink = document.getElementById("setup-open-monitor");
+        const resultsLink = document.getElementById("setup-open-results");
+        const runLinksWrap = document.getElementById("setup-run-links");
+        const navHome = document.getElementById("setup-nav-home");
+        const navExp = document.getElementById("setup-nav-exp");
+        const params = new URLSearchParams(window.location.search);
+        let currentRunId = params.get("run_id");
         let statusTimerId = null;
+
+        function withRunId(path, runId) {
+          if (!runId) return path;
+          return path + "?run_id=" + encodeURIComponent(runId);
+        }
+
+        function syncLinks(runId) {
+          if (navHome) navHome.href = withRunId("/frontend/experiment-setup.html", runId);
+          if (navExp) navExp.href = withRunId("/frontend/results-analysis.html", runId);
+          if (monitorLink) monitorLink.href = withRunId("/frontend/live-monitor.html", runId);
+          if (resultsLink) resultsLink.href = withRunId("/frontend/results-analysis.html", runId);
+          if (runLinksWrap) {
+            if (runId) runLinksWrap.classList.remove("hidden");
+            else runLinksWrap.classList.add("hidden");
+          }
+        }
 
         function stopStatusPolling() {
           if (statusTimerId === null) return;
@@ -518,6 +547,9 @@
               statusText.innerHTML =
                 'Run started: <span class="text-primary font-mono">' + data.run_id + "</span>";
             }
+            currentRunId = data.run_id;
+            window.history.replaceState({}, "", withRunId("/frontend/experiment-setup.html", currentRunId));
+            syncLinks(currentRunId);
             startStatusPolling(data.run_id);
           } catch (error) {
             if (statusText) {
@@ -530,6 +562,8 @@
         }
 
         if (startBtn) startBtn.addEventListener("click", startRun);
+        syncLinks(currentRunId);
+        if (currentRunId) startStatusPolling(currentRunId);
       })();
     </script>
   </body>
