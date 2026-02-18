@@ -22,6 +22,7 @@
 - 新增本地联调接口（仅本机开发）：
   - `GET /health`
   - `GET /runs`
+  - `GET /run/status?run_id=...`
   - `POST /run/start`
 - 三页接入真实数据：
   - `frontend/experiment-setup.html`
@@ -80,6 +81,17 @@
 }
 ```
 
+4. `GET /run/status?run_id=run_xxx`
+- 返回示例：
+```json
+{
+  "run_id": "run_xxx",
+  "runtime_status": "running",
+  "summary_file": "run_summary_run_xxx.json",
+  "results_file": "results_run_xxx.jsonl"
+}
+```
+
 ## 5. 页面打通需求
 ### 5.1 配置页（experiment-setup）
 - 点击 `Initialize Run` 后调用 `POST /run/start`
@@ -88,9 +100,10 @@
 
 ### 5.2 监控页（live-monitor）
 - 默认加载最新 run
-- 点击“刷新”时重新读取 summary 与最新若干条结果
+- 自动轮询（2秒）并保留手动刷新按钮
 - 展示字段至少包括：
   - `run_id`
+  - `runtime_status`
   - `actual_rows`
   - `error_rate`
   - 最近 turn 的 `dialogue_id/condition/turn_index/error_stage`
@@ -124,7 +137,8 @@
 1. 增加内置静态服务与 `/health`
 2. 增加 `/runs` 与 `runs_index.json` 维护
 3. 增加 `/run/start` 触发运行
-4. 配置页接入启动接口
-5. 监控页接入手动刷新
-6. 结果页接入真实数据表格与过滤
-7. 联调回归与文档补充
+4. 增加 `/run/status` 状态查询
+5. 配置页接入启动与状态轮询
+6. 监控页接入自动轮询与状态展示
+7. 结果页接入真实数据表格、过滤与分页
+8. 联调回归与文档补充

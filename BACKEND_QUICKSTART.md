@@ -42,4 +42,5 @@ python3 dev_server.py --port 8000
 ## 9. 本地接口
 - `GET http://127.0.0.1:8000/health`
 - `GET http://127.0.0.1:8000/runs`
+- `GET http://127.0.0.1:8000/run/status?run_id=<run_id>`
 - `POST http://127.0.0.1:8000/run/start`
