@@ -568,12 +568,14 @@
         <div class="bg-slate-900/50 border-t border-border-dark px-4 py-3 flex items-center justify-between">
           <div class="flex-1 flex justify-between sm:hidden">
             <a
+              id="results-prev-mobile"
               class="relative inline-flex items-center px-4 py-2 border border-border-dark text-sm font-medium rounded-md text-slate-300 bg-surface-dark hover:bg-slate-800"
               href="#"
             >
               Previous
             </a>
             <a
+              id="results-next-mobile"
               class="ml-3 relative inline-flex items-center px-4 py-2 border border-border-dark text-sm font-medium rounded-md text-slate-300 bg-surface-dark hover:bg-slate-800"
               href="#"
             >
@@ -586,11 +588,13 @@
                 Showing <span class="font-medium text-white">1</span> to
                 <span id="results-showing-count" class="font-medium text-white">8</span> of
                 <span id="results-total-count" class="font-medium text-white">12,402</span> results
+                <span id="results-page-meta" class="font-medium text-white ml-2">(Page 1/1)</span>
               </p>
             </div>
             <div>
               <nav aria-label="Pagination" class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
                 <a
+                  id="results-prev-btn"
                   class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-border-dark bg-surface-dark text-sm font-medium text-slate-400 hover:bg-slate-800 transition-colors"
                   href="#"
                 >
@@ -598,6 +602,7 @@
                   <span class="material-symbols-outlined text-sm">chevron_left</span>
                 </a>
                 <a
+                  id="results-page-indicator"
                   aria-current="page"
                   class="z-10 bg-primary/10 border-primary text-primary relative inline-flex items-center px-4 py-2 border text-sm font-bold"
                   href="#"
@@ -628,6 +633,7 @@
                   155
                 </a>
                 <a
+                  id="results-next-btn"
                   class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-border-dark bg-surface-dark text-sm font-medium text-slate-400 hover:bg-slate-800 transition-colors"
                   href="#"
                 >
@@ -650,9 +656,18 @@
         const recordsFound = document.getElementById("results-records-found");
         const showingCount = document.getElementById("results-showing-count");
         const totalCount = document.getElementById("results-total-count");
+        const pageMeta = document.getElementById("results-page-meta");
+        const pageIndicator = document.getElementById("results-page-indicator");
+        const prevBtn = document.getElementById("results-prev-btn");
+        const nextBtn = document.getElementById("results-next-btn");
+        const prevMobileBtn = document.getElementById("results-prev-mobile");
+        const nextMobileBtn = document.getElementById("results-next-mobile");
         const tableBody = document.getElementById("results-table-body");
 
         let allRows = [];
+        let filteredRows = [];
+        let currentPage = 1;
+        const pageSize = 50;
 
         function esc(value) {
           return String(value ?? "")
@@ -661,11 +676,18 @@
             .replaceAll(">", "&gt;");
         }
 
-        function renderRows(rows) {
-          const limited = rows.slice(0, 200);
-          if (recordsFound) recordsFound.textContent = `${rows.length} records found`;
+        function renderRows() {
+          const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+          if (currentPage > totalPages) currentPage = totalPages;
+          if (currentPage < 1) currentPage = 1;
+          const start = (currentPage - 1) * pageSize;
+          const end = start + pageSize;
+          const limited = filteredRows.slice(start, end);
           if (showingCount) showingCount.textContent = String(limited.length);
-          if (totalCount) totalCount.textContent = String(rows.length);
+          if (totalCount) totalCount.textContent = String(filteredRows.length);
+          if (pageMeta) pageMeta.textContent = `(Page ${currentPage}/${totalPages})`;
+          if (pageIndicator) pageIndicator.textContent = String(currentPage);
+          if (recordsFound) recordsFound.textContent = `${filteredRows.length} records found`;
           if (!tableBody) return;
           tableBody.innerHTML = limited
             .map((row, idx) => {
@@ -673,7 +695,7 @@
               const emotion = row.emotion === null || row.emotion === undefined ? "-" : row.emotion;
               return `
                 <tr class="group hover:bg-slate-800/50 transition-colors">
-                  <td class="px-6 py-3 whitespace-nowrap text-slate-500 font-mono text-xs">${String(idx + 1).padStart(2, "0")}</td>
+                  <td class="px-6 py-3 whitespace-nowrap text-slate-500 font-mono text-xs">${String(start + idx + 1).padStart(2, "0")}</td>
                   <td class="px-6 py-3 whitespace-nowrap font-medium text-primary font-mono">${esc(row.dialogue_id)}</td>
                   <td class="px-6 py-3 whitespace-nowrap text-slate-300">${esc(row.domain)}</td>
                   <td class="px-6 py-3 whitespace-nowrap text-slate-300">${esc(row.condition)}</td>
@@ -691,13 +713,14 @@
           const query = (searchInput?.value || "").trim().toLowerCase();
           const domain = domainFilter?.value || "";
           const condition = conditionFilter?.value || "";
-          const filtered = allRows.filter((row) => {
+          filteredRows = allRows.filter((row) => {
             const byId = !query || String(row.dialogue_id || "").toLowerCase().includes(query);
             const byDomain = !domain || row.domain === domain;
             const byCondition = !condition || row.condition === condition;
             return byId && byDomain && byCondition;
           });
-          renderRows(filtered);
+          currentPage = 1;
+          renderRows();
         }
 
         async function refreshData() {
@@ -728,14 +751,31 @@
           } catch (error) {
             if (metaText) metaText.textContent = "Refresh failed: " + String(error.message || error);
             allRows = [];
-            renderRows(allRows);
+            filteredRows = [];
+            renderRows();
           }
+        }
+
+        function goPrev(event) {
+          if (event) event.preventDefault();
+          currentPage -= 1;
+          renderRows();
+        }
+
+        function goNext(event) {
+          if (event) event.preventDefault();
+          currentPage += 1;
+          renderRows();
         }
 
         if (refreshBtn) refreshBtn.addEventListener("click", refreshData);
         if (searchInput) searchInput.addEventListener("input", applyFilters);
         if (domainFilter) domainFilter.addEventListener("change", applyFilters);
         if (conditionFilter) conditionFilter.addEventListener("change", applyFilters);
+        if (prevBtn) prevBtn.addEventListener("click", goPrev);
+        if (nextBtn) nextBtn.addEventListener("click", goNext);
+        if (prevMobileBtn) prevMobileBtn.addEventListener("click", goPrev);
+        if (nextMobileBtn) nextMobileBtn.addEventListener("click", goNext);
         refreshData();
       })();
     </script>
