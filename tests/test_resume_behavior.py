@@ -1,8 +1,8 @@
 from pathlib import Path
 
-from orchestrator import run_experiment
-from resume import load_resume_state
-from runtime_config import load_config
+from backend.orchestrator import run_experiment
+from backend.resume import load_resume_state
+from backend.runtime_config import load_config
 
 
 def _write_minimal_inputs(tmp_path, resume_strategy: str) -> Path:

@@ -1,8 +1,8 @@
 import json
 from pathlib import Path
 
-from orchestrator import run_experiment
-from runtime_config import load_config
+from backend.orchestrator import run_experiment
+from backend.runtime_config import load_config
 
 
 def test_run_experiment_writes_results_without_api_key(tmp_path):

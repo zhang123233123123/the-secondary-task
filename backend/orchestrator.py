@@ -6,17 +6,17 @@ import uuid
 from dataclasses import dataclass
 from typing import Any
 
-from input_loader import Dialogue, PromptsBundle, compute_sha256, load_dialogues, load_prompts
-from llm_clients import (
+from .input_loader import Dialogue, PromptsBundle, compute_sha256, load_dialogues, load_prompts
+from .llm_clients import (
     LLMError,
     OpenAICompatibleChatClient,
     detect_refusal,
     parse_judge_json,
 )
-from output_writer import JsonlWriter, write_summary
-from resume import load_resume_state
-from schema_validation import validate_with_simple_schema
-from runtime_config import RuntimeConfig
+from .output_writer import JsonlWriter, write_summary
+from .resume import load_resume_state
+from .schema_validation import validate_with_simple_schema
+from .runtime_config import RuntimeConfig
 
 CONDITIONS_ORDER = ("default", "evil", "distant")
 

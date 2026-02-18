@@ -8,7 +8,7 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Any
 
-from runtime_config import LLMConfig
+from .runtime_config import LLMConfig
 
 
 @dataclass

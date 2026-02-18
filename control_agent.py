@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import argparse
 
-from orchestrator import run_experiment
-from runtime_config import load_config
+from backend.orchestrator import run_experiment
+from backend.runtime_config import load_config
 
 
 def parse_args() -> argparse.Namespace:

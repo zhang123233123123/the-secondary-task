@@ -1,6 +1,6 @@
 import pytest
 
-from schema_validation import validate_with_simple_schema
+from backend.schema_validation import validate_with_simple_schema
 
 
 def test_schema_validation_accepts_valid_payload():

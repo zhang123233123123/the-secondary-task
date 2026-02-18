@@ -1,4 +1,4 @@
-from orchestrator import _truncate_history
+from backend.orchestrator import _truncate_history
 
 
 def test_sliding_window_truncation_keeps_system_and_latest():

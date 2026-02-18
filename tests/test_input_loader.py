@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from input_loader import load_dialogues, load_prompts
+from backend.input_loader import load_dialogues, load_prompts
 
 
 def test_load_dialogues_supports_compat_mode(tmp_path):
