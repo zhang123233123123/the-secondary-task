@@ -463,9 +463,40 @@
         const statusText = document.getElementById("setup-status-text");
         const startBtn = document.getElementById("initialize-run-btn");
         const dryRunCheckbox = document.getElementById("dry-run-checkbox");
+        let statusTimerId = null;
+
+        function stopStatusPolling() {
+          if (statusTimerId === null) return;
+          window.clearInterval(statusTimerId);
+          statusTimerId = null;
+        }
+
+        function startStatusPolling(runId) {
+          stopStatusPolling();
+          statusTimerId = window.setInterval(async function () {
+            try {
+              const response = await fetch("/run/status?run_id=" + encodeURIComponent(runId));
+              if (!response.ok) return;
+              const data = await response.json();
+              if (statusText) {
+                statusText.innerHTML =
+                  'Run <span class="text-primary font-mono">' +
+                  runId +
+                  "</span> status: " +
+                  String(data.runtime_status || "unknown");
+              }
+              if (data.runtime_status && data.runtime_status !== "running") {
+                stopStatusPolling();
+              }
+            } catch (_) {
+              // Keep polling; transient errors should not break UI.
+            }
+          }, 2000);
+        }
 
         async function startRun() {
           if (!startBtn) return;
+          stopStatusPolling();
           startBtn.disabled = true;
           startBtn.classList.add("opacity-60", "cursor-not-allowed");
           if (statusText) statusText.textContent = "Starting run...";
@@ -487,6 +518,7 @@
               statusText.innerHTML =
                 'Run started: <span class="text-primary font-mono">' + data.run_id + "</span>";
             }
+            startStatusPolling(data.run_id);
           } catch (error) {
             if (statusText) {
               statusText.textContent = "Start failed: " + String(error.message || error);
