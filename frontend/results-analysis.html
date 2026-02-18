@@ -150,7 +150,7 @@
               >Completed</span
             >
           </div>
-          <p class="text-slate-400 text-sm max-w-2xl">
+          <p id="results-meta-text" class="text-slate-400 text-sm max-w-2xl">
             Analyzing style drift across 12,402 dialogue turns. Detected 142
             instances of high harm probability in drifted models.
           </p>
@@ -163,10 +163,11 @@
             Download JSONL
           </button>
           <button
+            id="results-refresh-btn"
             class="group flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary hover:bg-blue-600 text-white shadow-lg shadow-blue-500/20 text-sm font-bold transition-all"
           >
             <span class="material-symbols-outlined text-[18px]">assessment</span>
-            Generate Summary Report
+            Refresh Data
           </button>
         </div>
       </div>
@@ -178,6 +179,7 @@
             <span class="material-symbols-outlined text-slate-500">search</span>
           </div>
           <input
+            id="results-search-input"
             class="block w-full pl-10 pr-3 py-2.5 bg-background-dark border border-border-dark rounded-lg leading-5 text-slate-300 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm transition-all"
             placeholder="Search by Dialogue ID..."
             type="text"
@@ -187,13 +189,14 @@
         <div class="md:col-span-3">
           <div class="relative">
             <select
+              id="results-domain-filter"
               class="block w-full pl-3 pr-10 py-2.5 text-base border-border-dark bg-background-dark text-slate-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-lg appearance-none cursor-pointer"
             >
-              <option>All Domains</option>
-              <option>Creative Writing</option>
-              <option>Finance</option>
-              <option>Mental Health</option>
-              <option>Medicine</option>
+              <option value="">All Domains</option>
+              <option value="creative">Creative</option>
+              <option value="finance">Finance</option>
+              <option value="mental_health">Mental Health</option>
+              <option value="medicine">Medicine</option>
             </select>
             <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500">
               <span class="material-symbols-outlined text-sm">expand_more</span>
@@ -204,12 +207,13 @@
         <div class="md:col-span-3">
           <div class="relative">
             <select
+              id="results-condition-filter"
               class="block w-full pl-3 pr-10 py-2.5 text-base border-border-dark bg-background-dark text-slate-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-lg appearance-none cursor-pointer"
             >
-              <option>All Conditions</option>
-              <option>Baseline (Control)</option>
-              <option>Drifted (v1.2)</option>
-              <option>Reinforced (RLHF)</option>
+              <option value="">All Conditions</option>
+              <option value="default">Default</option>
+              <option value="evil">Evil</option>
+              <option value="distant">Distant</option>
             </select>
             <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500">
               <span class="material-symbols-outlined text-sm">expand_more</span>
@@ -234,7 +238,7 @@
         <div class="bg-slate-900/50 border-b border-border-dark px-4 py-3 flex justify-between items-center">
           <h3 class="text-sm font-semibold text-slate-300">Detailed Turn Analysis</h3>
           <div class="flex items-center gap-3">
-            <span class="text-xs text-slate-500 font-mono">12,402 records found</span>
+            <span id="results-records-found" class="text-xs text-slate-500 font-mono">12,402 records found</span>
           </div>
         </div>
         <div class="overflow-x-auto custom-scrollbar flex-1">
@@ -300,7 +304,7 @@
                 </th>
               </tr>
             </thead>
-            <tbody class="bg-surface-dark divide-y divide-border-dark text-sm">
+            <tbody id="results-table-body" class="bg-surface-dark divide-y divide-border-dark text-sm">
               <!-- Row 1: High Harm -->
               <tr class="group hover:bg-slate-800/50 transition-colors">
                 <td class="px-6 py-3 whitespace-nowrap text-slate-500 font-mono text-xs">01</td>
@@ -580,8 +584,8 @@
             <div>
               <p class="text-sm text-slate-400">
                 Showing <span class="font-medium text-white">1</span> to
-                <span class="font-medium text-white">8</span> of
-                <span class="font-medium text-white">12,402</span> results
+                <span id="results-showing-count" class="font-medium text-white">8</span> of
+                <span id="results-total-count" class="font-medium text-white">12,402</span> results
               </p>
             </div>
             <div>
@@ -636,5 +640,104 @@
         </div>
       </div>
     </main>
+    <script>
+      (function () {
+        const refreshBtn = document.getElementById("results-refresh-btn");
+        const searchInput = document.getElementById("results-search-input");
+        const domainFilter = document.getElementById("results-domain-filter");
+        const conditionFilter = document.getElementById("results-condition-filter");
+        const metaText = document.getElementById("results-meta-text");
+        const recordsFound = document.getElementById("results-records-found");
+        const showingCount = document.getElementById("results-showing-count");
+        const totalCount = document.getElementById("results-total-count");
+        const tableBody = document.getElementById("results-table-body");
+
+        let allRows = [];
+
+        function esc(value) {
+          return String(value ?? "")
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;");
+        }
+
+        function renderRows(rows) {
+          const limited = rows.slice(0, 200);
+          if (recordsFound) recordsFound.textContent = `${rows.length} records found`;
+          if (showingCount) showingCount.textContent = String(limited.length);
+          if (totalCount) totalCount.textContent = String(rows.length);
+          if (!tableBody) return;
+          tableBody.innerHTML = limited
+            .map((row, idx) => {
+              const harm = row.harm === null || row.harm === undefined ? "-" : row.harm;
+              const emotion = row.emotion === null || row.emotion === undefined ? "-" : row.emotion;
+              return `
+                <tr class="group hover:bg-slate-800/50 transition-colors">
+                  <td class="px-6 py-3 whitespace-nowrap text-slate-500 font-mono text-xs">${String(idx + 1).padStart(2, "0")}</td>
+                  <td class="px-6 py-3 whitespace-nowrap font-medium text-primary font-mono">${esc(row.dialogue_id)}</td>
+                  <td class="px-6 py-3 whitespace-nowrap text-slate-300">${esc(row.domain)}</td>
+                  <td class="px-6 py-3 whitespace-nowrap text-slate-300">${esc(row.condition)}</td>
+                  <td class="px-6 py-3 whitespace-nowrap text-slate-400 font-mono">${esc(row.turn_index)}</td>
+                  <td class="px-6 py-3 whitespace-nowrap text-right font-mono text-slate-300">${esc(harm)}</td>
+                  <td class="px-6 py-3 whitespace-nowrap text-right font-mono text-slate-300">${esc(emotion)}</td>
+                  <td class="px-6 py-3 whitespace-nowrap text-right text-xs text-slate-500">${esc(row.error_stage ?? "none")}</td>
+                </tr>
+              `;
+            })
+            .join("");
+        }
+
+        function applyFilters() {
+          const query = (searchInput?.value || "").trim().toLowerCase();
+          const domain = domainFilter?.value || "";
+          const condition = conditionFilter?.value || "";
+          const filtered = allRows.filter((row) => {
+            const byId = !query || String(row.dialogue_id || "").toLowerCase().includes(query);
+            const byDomain = !domain || row.domain === domain;
+            const byCondition = !condition || row.condition === condition;
+            return byId && byDomain && byCondition;
+          });
+          renderRows(filtered);
+        }
+
+        async function refreshData() {
+          try {
+            const runsResp = await fetch("/runs");
+            if (!runsResp.ok) throw new Error("Failed to load runs index");
+            const runsData = await runsResp.json();
+            const latestId = runsData.latest_run_id;
+            if (!latestId) throw new Error("No run found");
+            const runItem = (runsData.runs || []).find((x) => x.run_id === latestId);
+            if (!runItem) throw new Error("Run metadata missing");
+
+            const summaryResp = await fetch("/output/" + runItem.summary_file);
+            if (!summaryResp.ok) throw new Error("Failed to load summary");
+            const summary = await summaryResp.json();
+            if (metaText) {
+              metaText.textContent = `Run ${latestId}: actual_rows=${summary.actual_rows}, error_rows=${summary.error_rows}, error_rate=${Number(summary.error_rate || 0).toFixed(3)}, refusal_count=${summary.refusal_count}`;
+            }
+
+            const resultsResp = await fetch("/output/" + runItem.results_file);
+            if (!resultsResp.ok) throw new Error("Failed to load results");
+            const resultsText = await resultsResp.text();
+            allRows = resultsText
+              .split("\n")
+              .filter(Boolean)
+              .map((line) => JSON.parse(line));
+            applyFilters();
+          } catch (error) {
+            if (metaText) metaText.textContent = "Refresh failed: " + String(error.message || error);
+            allRows = [];
+            renderRows(allRows);
+          }
+        }
+
+        if (refreshBtn) refreshBtn.addEventListener("click", refreshData);
+        if (searchInput) searchInput.addEventListener("input", applyFilters);
+        if (domainFilter) domainFilter.addEventListener("change", applyFilters);
+        if (conditionFilter) conditionFilter.addEventListener("change", applyFilters);
+        refreshData();
+      })();
+    </script>
   </body>
 </html>
