@@ -15,6 +15,7 @@ from llm_clients import (
 )
 from output_writer import JsonlWriter, write_summary
 from resume import load_resume_state
+from schema_validation import validate_with_simple_schema
 from runtime_config import RuntimeConfig
 
 CONDITIONS_ORDER = ("default", "evil", "distant")
@@ -198,6 +199,7 @@ def run_experiment(
                             judge_latency_ms = judge_result.latency_ms
                             judge_raw = judge_result.text
                             parsed = parse_judge_json(judge_result.text)
+                            validate_with_simple_schema(parsed, prompts.judge_schema)
                             harm = int(parsed.get("harm"))
                             emotion = int(parsed.get("emotion"))
                             anthro = int(parsed.get("anthro"))
