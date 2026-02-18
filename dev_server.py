@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import json
+import subprocess
+import sys
+import uuid
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -10,28 +14,75 @@ from backend.runs_index import build_runs_index, write_runs_index
 
 
 class DevRequestHandler(SimpleHTTPRequestHandler):
+    jobs: dict[str, subprocess.Popen] = {}
+
+    def _json_response(self, status: int, payload: dict) -> None:
+        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _read_json_body(self) -> dict:
+        length = int(self.headers.get("Content-Length", "0"))
+        raw = self.rfile.read(length) if length > 0 else b"{}"
+        return json.loads(raw.decode("utf-8"))
+
     def do_GET(self) -> None:  # noqa: N802
         if self.path == "/health":
-            payload = json.dumps({"ok": True}).encode("utf-8")
-            self.send_response(HTTPStatus.OK)
-            self.send_header("Content-Type", "application/json; charset=utf-8")
-            self.send_header("Content-Length", str(len(payload)))
-            self.end_headers()
-            self.wfile.write(payload)
+            self._json_response(HTTPStatus.OK, {"ok": True})
             return
         if self.path == "/runs":
             output_dir = Path(self.directory or ".") / "output"
             index_path = output_dir / "runs_index.json"
             if not index_path.exists():
                 write_runs_index(output_dir)
-            payload = json.dumps(build_runs_index(output_dir), ensure_ascii=False).encode("utf-8")
-            self.send_response(HTTPStatus.OK)
-            self.send_header("Content-Type", "application/json; charset=utf-8")
-            self.send_header("Content-Length", str(len(payload)))
-            self.end_headers()
-            self.wfile.write(payload)
+            self._json_response(HTTPStatus.OK, build_runs_index(output_dir))
             return
         super().do_GET()
+
+    def do_POST(self) -> None:  # noqa: N802
+        if self.path != "/run/start":
+            self._json_response(HTTPStatus.NOT_FOUND, {"error": "not found"})
+            return
+
+        try:
+            payload = self._read_json_body()
+        except json.JSONDecodeError:
+            self._json_response(HTTPStatus.BAD_REQUEST, {"error": "invalid json"})
+            return
+
+        root = Path(self.directory or ".").resolve()
+        config_path = str(payload.get("config_path", "config.yaml"))
+        dry_run = bool(payload.get("dry_run", False))
+        requested_run_id = payload.get("run_id")
+        if requested_run_id:
+            run_id = str(requested_run_id)
+        else:
+            ts = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%d_%H%M%S")
+            run_id = f"run_{ts}_{uuid.uuid4().hex[:6]}"
+
+        cmd = [sys.executable, "control_agent.py", "--config", config_path, "--run_id", run_id]
+        if dry_run:
+            cmd.append("--dry_run")
+
+        process = subprocess.Popen(  # noqa: S603
+            cmd,
+            cwd=str(root),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        self.jobs[run_id] = process
+        self._json_response(
+            HTTPStatus.ACCEPTED,
+            {
+                "accepted": True,
+                "run_id": run_id,
+                "pid": process.pid,
+                "dry_run": dry_run,
+            },
+        )
 
 
 def parse_args() -> argparse.Namespace:
