@@ -8,6 +8,17 @@ import yaml
 
 
 @dataclass
+class LLMConfig:
+    provider: str
+    model: str
+    api_key_env: str
+    base_url: str
+    temperature: float
+    top_p: float
+    seed: int | None
+
+
+@dataclass
 class RuntimeConfig:
     dialogues_path: str
     prompts_path: str
@@ -20,6 +31,21 @@ class RuntimeConfig:
     truncation_policy: str
     flush_policy: str
     input_compatibility_mode: bool
+    max_history_messages: int
+    llm3: LLMConfig
+    llm4: LLMConfig
+
+
+def _load_llm_config(raw: dict[str, Any], default_model: str) -> LLMConfig:
+    return LLMConfig(
+        provider=str(raw.get("provider", "deepseek")),
+        model=str(raw.get("model", default_model)),
+        api_key_env=str(raw.get("api_key_env", "DEEPSEEK_API_KEY")),
+        base_url=str(raw.get("base_url", "https://api.deepseek.com/v1")),
+        temperature=float(raw.get("temperature", 0.7)),
+        top_p=float(raw.get("top_p", 1.0)),
+        seed=raw.get("seed"),
+    )
 
 
 def load_config(path: str | Path) -> RuntimeConfig:
@@ -38,4 +64,7 @@ def load_config(path: str | Path) -> RuntimeConfig:
         truncation_policy=str(raw.get("truncation_policy", "sliding_window")),
         flush_policy=str(raw.get("flush_policy", "per_turn")),
         input_compatibility_mode=bool(raw.get("input_compatibility_mode", False)),
+        max_history_messages=int(raw.get("max_history_messages", 20)),
+        llm3=_load_llm_config(raw.get("llm3", {}), default_model="deepseek-chat"),
+        llm4=_load_llm_config(raw.get("llm4", {}), default_model="deepseek-chat"),
     )

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 
-from input_loader import load_dialogues, load_prompts
+from orchestrator import run_experiment
 from runtime_config import load_config
 
 
@@ -21,17 +21,17 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     config = load_config(args.config)
-    dialogues = load_dialogues(
-        config.dialogues_path,
-        compatibility_mode=config.input_compatibility_mode,
+    result = run_experiment(
+        config=config,
+        config_path=args.config,
+        dry_run=args.dry_run,
+        run_id=args.run_id,
     )
-    prompts = load_prompts(config.prompts_path)
     print(
-        "Control agent initialized. "
-        f"dialogues={len(dialogues)} "
-        f"conditions={len(prompts.conditions)} "
-        f"output_dir={config.output_dir} "
-        f"dry_run={args.dry_run}"
+        "Run complete. "
+        f"run_id={result['run_id']} "
+        f"results={result['results_path']} "
+        f"summary={result['summary_path']}"
     )
     return 0
 
