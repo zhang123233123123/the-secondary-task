@@ -28,3 +28,18 @@ python3 control_agent.py --config config.yaml --run_id run_20260218_123000_ab12c
 ## 6. 输出文件
 - `output/results_{run_id}.jsonl`
 - `output/run_summary_{run_id}.json`
+
+## 7. 启动前后端联调服务
+```bash
+python3 dev_server.py --port 8000
+```
+
+## 8. 页面访问地址
+- 配置页: `http://127.0.0.1:8000/frontend/experiment-setup.html`
+- 监控页: `http://127.0.0.1:8000/frontend/live-monitor.html`
+- 结果页: `http://127.0.0.1:8000/frontend/results-analysis.html`
+
+## 9. 本地接口
+- `GET http://127.0.0.1:8000/health`
+- `GET http://127.0.0.1:8000/runs`
+- `POST http://127.0.0.1:8000/run/start`
