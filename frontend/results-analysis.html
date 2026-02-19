@@ -110,8 +110,9 @@
               >Monitor</a
             >
             <a
+              id="results-open-settings"
               class="text-slate-400 hover:text-white text-sm font-medium transition-colors"
-              href="/frontend/results-analysis.html"
+              href="/frontend/settings-api.html"
               >Settings</a
             >
           </nav>
@@ -377,6 +378,7 @@
         const downloadBtn = document.getElementById("results-download-btn");
         const setupLink = document.getElementById("results-open-setup");
         const monitorLink = document.getElementById("results-open-monitor");
+        const settingsLink = document.getElementById("results-open-settings");
         const breadcrumbExp = document.getElementById("results-breadcrumb-exp");
         const breadcrumbRun = document.getElementById("results-breadcrumb-run");
         const searchInput = document.getElementById("results-search-input");
@@ -411,6 +413,7 @@
         function syncLinks(runId) {
           if (setupLink) setupLink.href = withRunId("/frontend/experiment-setup.html", runId);
           if (monitorLink) monitorLink.href = withRunId("/frontend/live-monitor.html", runId);
+          if (settingsLink) settingsLink.href = withRunId("/frontend/settings-api.html", runId);
           if (breadcrumbExp) breadcrumbExp.href = withRunId("/frontend/results-analysis.html", runId);
           if (breadcrumbRun) {
             breadcrumbRun.href = withRunId("/frontend/results-analysis.html", runId);

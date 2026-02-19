@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>StyleDrift Lab - API Key Settings</title>
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              primary: "#3c83f6",
+              "primary-dark": "#2563eb",
+              "background-dark": "#101723",
+              "card-dark": "#182334",
+              "border-dark": "#314668",
+              "text-subtle": "#90a7cb",
+            },
+            fontFamily: {
+              display: ["Inter", "sans-serif"],
+              mono: ["Roboto Mono", "monospace"],
+            },
+            borderRadius: {
+              DEFAULT: "0.25rem",
+              lg: "0.5rem",
+              xl: "0.75rem",
+              "2xl": "1rem",
+              full: "9999px",
+            },
+          },
+        },
+      };
+    </script>
+  </head>
+  <body
+    class="bg-background-dark font-display text-white min-h-screen antialiased selection:bg-primary selection:text-white"
+  >
+    <div class="max-w-5xl mx-auto px-6 py-8 flex flex-col gap-8">
+      <header class="flex items-center justify-between gap-4 border-b border-border-dark pb-5">
+        <div class="space-y-1">
+          <p class="text-xs text-text-subtle uppercase tracking-wide">StyleDrift Lab</p>
+          <h1 class="text-3xl font-bold tracking-tight">API Key Settings</h1>
+          <p class="text-sm text-text-subtle">
+            Configure local inference credentials for this project.
+          </p>
+        </div>
+        <div id="settings-status-badge" class="px-3 py-1 rounded-full text-xs font-mono border">
+          Checking...
+        </div>
+      </header>
+
+      <main class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <section class="md:col-span-2 bg-card-dark border border-border-dark rounded-2xl p-6 space-y-5">
+          <div class="space-y-1">
+            <h2 class="text-lg font-semibold">DeepSeek API Key</h2>
+            <p class="text-xs text-text-subtle">
+              Saved to <span class="font-mono">.env.local</span> at repo root.
+            </p>
+          </div>
+
+          <div class="space-y-2">
+            <label for="settings-key-input" class="text-sm text-white">DEEPSEEK_API_KEY</label>
+            <div class="flex gap-2">
+              <input
+                id="settings-key-input"
+                type="password"
+                class="flex-1 bg-background-dark border border-border-dark rounded-lg py-2.5 px-3 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                placeholder="sk-..."
+              />
+              <button
+                id="settings-toggle-visibility"
+                type="button"
+                class="px-3 rounded-lg border border-border-dark text-text-subtle hover:text-white hover:bg-background-dark transition-colors"
+              >
+                Show
+              </button>
+            </div>
+            <p class="text-xs text-text-subtle">
+              Current: <span id="settings-masked-value" class="font-mono">-</span>
+            </p>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <button
+              id="settings-save-btn"
+              type="button"
+              class="px-5 py-2.5 rounded-lg bg-primary hover:bg-primary-dark font-semibold text-sm transition-colors"
+            >
+              Save API Key
+            </button>
+            <button
+              id="settings-refresh-btn"
+              type="button"
+              class="px-5 py-2.5 rounded-lg border border-border-dark text-text-subtle hover:text-white hover:bg-background-dark text-sm transition-colors"
+            >
+              Refresh Status
+            </button>
+          </div>
+
+          <div id="settings-message" class="text-sm text-text-subtle">
+            Waiting for action...
+          </div>
+        </section>
+
+        <aside class="bg-card-dark border border-border-dark rounded-2xl p-6 space-y-4">
+          <h3 class="text-sm font-semibold uppercase tracking-wide text-text-subtle">Navigation</h3>
+          <a
+            id="settings-open-setup"
+            href="/frontend/experiment-setup.html"
+            class="block px-3 py-2 rounded-lg border border-border-dark text-text-subtle hover:text-white hover:bg-background-dark transition-colors"
+            >Open Setup</a
+          >
+          <a
+            id="settings-open-monitor"
+            href="/frontend/live-monitor.html"
+            class="block px-3 py-2 rounded-lg border border-border-dark text-text-subtle hover:text-white hover:bg-background-dark transition-colors"
+            >Open Monitor</a
+          >
+          <a
+            id="settings-open-results"
+            href="/frontend/results-analysis.html"
+            class="block px-3 py-2 rounded-lg border border-border-dark text-text-subtle hover:text-white hover:bg-background-dark transition-colors"
+            >Open Results</a
+          >
+        </aside>
+      </main>
+    </div>
+
+    <script>
+      (function () {
+        const params = new URLSearchParams(window.location.search);
+        const runId = params.get("run_id");
+        const configPath = params.get("config_path");
+
+        const badge = document.getElementById("settings-status-badge");
+        const maskedValue = document.getElementById("settings-masked-value");
+        const keyInput = document.getElementById("settings-key-input");
+        const msg = document.getElementById("settings-message");
+        const saveBtn = document.getElementById("settings-save-btn");
+        const refreshBtn = document.getElementById("settings-refresh-btn");
+        const toggleBtn = document.getElementById("settings-toggle-visibility");
+        const setupLink = document.getElementById("settings-open-setup");
+        const monitorLink = document.getElementById("settings-open-monitor");
+        const resultsLink = document.getElementById("settings-open-results");
+
+        function withContext(path) {
+          const q = new URLSearchParams();
+          if (runId) q.set("run_id", runId);
+          if (configPath) q.set("config_path", configPath);
+          const query = q.toString();
+          return query ? path + "?" + query : path;
+        }
+
+        function syncLinks() {
+          if (setupLink) setupLink.href = withContext("/frontend/experiment-setup.html");
+          if (monitorLink) monitorLink.href = withContext("/frontend/live-monitor.html");
+          if (resultsLink) resultsLink.href = withContext("/frontend/results-analysis.html");
+        }
+
+        function setBadge(configured) {
+          if (!badge) return;
+          badge.className =
+            "px-3 py-1 rounded-full text-xs font-mono border " +
+            (configured
+              ? "bg-green-500/10 border-green-500/30 text-green-400"
+              : "bg-red-500/10 border-red-500/30 text-red-300");
+          badge.textContent = configured ? "Configured" : "Not Configured";
+        }
+
+        async function refreshStatus() {
+          try {
+            const response = await fetch("/settings/apikey/status");
+            if (!response.ok) throw new Error("Failed to read API key status");
+            const data = await response.json();
+            setBadge(!!data.configured);
+            if (maskedValue) maskedValue.textContent = data.masked_key || "-";
+            if (msg) msg.textContent = data.configured ? "API key is ready." : "API key is missing.";
+          } catch (error) {
+            if (msg) msg.textContent = "Status check failed: " + String(error.message || error);
+            setBadge(false);
+          }
+        }
+
+        async function saveKey() {
+          const raw = keyInput ? keyInput.value.trim() : "";
+          if (raw.length < 10) {
+            if (msg) msg.textContent = "Invalid key: at least 10 characters required.";
+            return;
+          }
+          if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.classList.add("opacity-60", "cursor-not-allowed");
+          }
+          if (msg) msg.textContent = "Saving...";
+          try {
+            const response = await fetch("/settings/apikey", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ deepseek_api_key: raw }),
+            });
+            const data = await response.json();
+            if (!response.ok || !data.ok) {
+              throw new Error(data.error || "Save failed");
+            }
+            if (keyInput) keyInput.value = "";
+            if (msg) msg.textContent = "Saved successfully to .env.local";
+            await refreshStatus();
+          } catch (error) {
+            if (msg) msg.textContent = "Save failed: " + String(error.message || error);
+          } finally {
+            if (saveBtn) {
+              saveBtn.disabled = false;
+              saveBtn.classList.remove("opacity-60", "cursor-not-allowed");
+            }
+          }
+        }
+
+        function toggleVisibility() {
+          if (!keyInput || !toggleBtn) return;
+          keyInput.type = keyInput.type === "password" ? "text" : "password";
+          toggleBtn.textContent = keyInput.type === "password" ? "Show" : "Hide";
+        }
+
+        if (refreshBtn) refreshBtn.addEventListener("click", refreshStatus);
+        if (saveBtn) saveBtn.addEventListener("click", saveKey);
+        if (toggleBtn) toggleBtn.addEventListener("click", toggleVisibility);
+        syncLinks();
+        refreshStatus();
+      })();
+    </script>
+  </body>
+</html>

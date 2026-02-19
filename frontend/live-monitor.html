@@ -181,11 +181,13 @@
           <span id="monitor-pause-label">Pause</span>
         </button>
         <div class="h-8 w-[1px] bg-surface-border mx-1"></div>
-        <button
+        <a
+          id="monitor-open-settings"
           class="flex size-8 items-center justify-center rounded-md hover:bg-surface-border text-slate-400 hover:text-white transition-colors"
+          href="/frontend/settings-api.html"
         >
           <span class="material-symbols-outlined text-[20px]">settings</span>
-        </button>
+        </a>
         <button
           class="flex size-8 items-center justify-center rounded-md hover:bg-surface-border text-slate-400 hover:text-white transition-colors relative"
         >
@@ -388,6 +390,7 @@
         const modelLabelEl = document.getElementById("monitor-model-label");
         const setupLink = document.getElementById("monitor-open-setup");
         const resultsLink = document.getElementById("monitor-open-results");
+        const settingsLink = document.getElementById("monitor-open-settings");
         const connectionEl = document.getElementById("monitor-connection");
         const refreshLatencyEl = document.getElementById("monitor-refresh-latency");
         const currentConditionEl = document.getElementById("monitor-current-condition");
@@ -423,6 +426,7 @@
         function syncLinks(runId) {
           if (setupLink) setupLink.href = withRunId("/frontend/experiment-setup.html", runId);
           if (resultsLink) resultsLink.href = withRunId("/frontend/results-analysis.html", runId);
+          if (settingsLink) settingsLink.href = withRunId("/frontend/settings-api.html", runId);
         }
 
         function formatTimestamp(isoString) {

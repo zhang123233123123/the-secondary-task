@@ -177,6 +177,12 @@
               href="/frontend/results-analysis.html"
               >Results</a
             >
+            <a
+              id="setup-open-settings-top"
+              class="px-3 py-1 rounded-full bg-card-dark text-text-subtle text-xs border border-border-dark hover:text-white transition-colors"
+              href="/frontend/settings-api.html"
+              >Settings</a
+            >
           </div>
         </div>
         <!-- Content Grid -->
@@ -476,6 +482,7 @@
             <div id="setup-run-links" class="flex items-center gap-2 text-xs">
               <a id="setup-open-monitor" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white" href="/frontend/live-monitor.html">Open Monitor</a>
               <a id="setup-open-results" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white" href="/frontend/results-analysis.html">Open Results</a>
+              <a id="setup-open-settings" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white" href="/frontend/settings-api.html">API Key Settings</a>
             </div>
           </div>
         </div>
@@ -503,8 +510,10 @@
         const promptsStatus = document.getElementById("setup-prompts-status");
         const monitorLink = document.getElementById("setup-open-monitor");
         const resultsLink = document.getElementById("setup-open-results");
+        const settingsLink = document.getElementById("setup-open-settings");
         const monitorTopLink = document.getElementById("setup-open-monitor-top");
         const resultsTopLink = document.getElementById("setup-open-results-top");
+        const settingsTopLink = document.getElementById("setup-open-settings-top");
         const runLinksWrap = document.getElementById("setup-run-links");
         const navHome = document.getElementById("setup-nav-home");
         const navExp = document.getElementById("setup-nav-exp");
@@ -529,8 +538,10 @@
           if (navExp) navExp.href = withRunId("/frontend/results-analysis.html", runId);
           if (monitorLink) monitorLink.href = withRunId("/frontend/live-monitor.html", runId);
           if (resultsLink) resultsLink.href = withRunId("/frontend/results-analysis.html", runId);
+          if (settingsLink) settingsLink.href = withRunId("/frontend/settings-api.html", runId);
           if (monitorTopLink) monitorTopLink.href = withRunId("/frontend/live-monitor.html", runId);
           if (resultsTopLink) resultsTopLink.href = withRunId("/frontend/results-analysis.html", runId);
+          if (settingsTopLink) settingsTopLink.href = withRunId("/frontend/settings-api.html", runId);
           if (runLinksWrap) runLinksWrap.classList.remove("hidden");
         }
 
@@ -693,6 +704,18 @@
           if (statusText) statusText.textContent = "Starting run...";
 
           try {
+            const keyStatusResp = await fetch("/settings/apikey/status");
+            if (!keyStatusResp.ok) throw new Error("Failed to validate API key status");
+            const keyStatus = await keyStatusResp.json();
+            if (!keyStatus.configured) {
+              const settingsUrl = withRunId("/frontend/settings-api.html", currentRunId);
+              throw new Error(
+                'Missing API key. Configure it in <a class="text-primary underline" href="' +
+                  settingsUrl +
+                  '">API Key Settings</a> first.',
+              );
+            }
+
             const response = await fetch("/run/start", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -704,6 +727,16 @@
             });
             const data = await response.json();
             if (!response.ok || !data.accepted) {
+              if (data && Array.isArray(data.missing_api_keys) && data.missing_api_keys.length) {
+                const settingsUrl = withRunId("/frontend/settings-api.html", currentRunId);
+                throw new Error(
+                  "Missing key(s): " +
+                    data.missing_api_keys.join(", ") +
+                    '. Configure in <a class="text-primary underline" href="' +
+                    settingsUrl +
+                    '">API Key Settings</a>.',
+                );
+              }
               throw new Error(data.error || "Failed to start run");
             }
             if (statusText) {
@@ -716,7 +749,7 @@
             startStatusPolling(data.run_id);
           } catch (error) {
             if (statusText) {
-              statusText.textContent = "Start failed: " + String(error.message || error);
+              statusText.innerHTML = "Start failed: " + String(error.message || error);
             }
           } finally {
             startBtn.disabled = false;

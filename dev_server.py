@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import os
 import subprocess
 import sys
 import uuid
@@ -13,11 +14,14 @@ from urllib.parse import parse_qs, urlparse
 
 import yaml
 
+from backend.env_store import mask_secret, read_local_env, resolve_secret, upsert_local_env
 from backend.runs_index import build_runs_index, write_runs_index
 
 
 class DevRequestHandler(SimpleHTTPRequestHandler):
     jobs: dict[str, dict] = {}
+    local_env_file = ".env.local"
+    deepseek_key_name = "DEEPSEEK_API_KEY"
 
     @staticmethod
     def _resolve_repo_path(root: Path, raw_path: str) -> Path:
@@ -85,6 +89,49 @@ class DevRequestHandler(SimpleHTTPRequestHandler):
             ).isoformat(),
             "relative_path": str(path.name),
         }
+
+    @classmethod
+    def _settings_payload(cls, root: Path) -> dict:
+        env_path = root / cls.local_env_file
+        process_value = os.environ.get(cls.deepseek_key_name)
+        if process_value:
+            return {
+                "configured": True,
+                "masked_key": mask_secret(process_value),
+                "source": "process_env",
+            }
+
+        local_values = read_local_env(env_path)
+        local_value = local_values.get(cls.deepseek_key_name)
+        if local_value:
+            return {
+                "configured": True,
+                "masked_key": mask_secret(local_value),
+                "source": cls.local_env_file,
+            }
+
+        return {
+            "configured": False,
+            "masked_key": None,
+            "source": None,
+        }
+
+    @classmethod
+    def _missing_api_keys(cls, config_payload: dict, root: Path) -> list[str]:
+        llm3 = config_payload.get("llm3", {}) if isinstance(config_payload.get("llm3"), dict) else {}
+        llm4 = config_payload.get("llm4", {}) if isinstance(config_payload.get("llm4"), dict) else {}
+        required = {
+            str(llm3.get("api_key_env", cls.deepseek_key_name)),
+            str(llm4.get("api_key_env", cls.deepseek_key_name)),
+        }
+        env_path = root / cls.local_env_file
+        missing: list[str] = []
+        for key in sorted(required):
+            if not key:
+                continue
+            if not resolve_secret(key, env_path):
+                missing.append(key)
+        return missing
 
     def _json_response(self, status: int, payload: dict) -> None:
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -176,6 +223,9 @@ class DevRequestHandler(SimpleHTTPRequestHandler):
                 },
             )
             return
+        if parsed.path == "/settings/apikey/status":
+            self._json_response(HTTPStatus.OK, self._settings_payload(root))
+            return
         if parsed.path == "/runs":
             output_dir = root / "output"
             index_path = output_dir / "runs_index.json"
@@ -209,6 +259,33 @@ class DevRequestHandler(SimpleHTTPRequestHandler):
         super().do_GET()
 
     def do_POST(self) -> None:  # noqa: N802
+        if self.path == "/settings/apikey":
+            try:
+                payload = self._read_json_body()
+            except json.JSONDecodeError:
+                self._json_response(HTTPStatus.BAD_REQUEST, {"error": "invalid json"})
+                return
+            key = str(payload.get("deepseek_api_key", "")).strip()
+            if len(key) < 10:
+                self._json_response(
+                    HTTPStatus.BAD_REQUEST,
+                    {"error": "deepseek_api_key is required and must be at least 10 chars"},
+                )
+                return
+            root = Path(self.directory or ".").resolve()
+            env_path = root / self.local_env_file
+            upsert_local_env(env_path, self.deepseek_key_name, key)
+            self._json_response(
+                HTTPStatus.OK,
+                {
+                    "ok": True,
+                    "configured": True,
+                    "masked_key": mask_secret(key),
+                    "source": self.local_env_file,
+                },
+            )
+            return
+
         if self.path == "/setup/draft":
             try:
                 payload = self._read_json_body()
@@ -273,15 +350,28 @@ class DevRequestHandler(SimpleHTTPRequestHandler):
             )
             return
 
+        base_config = self._load_yaml_dict(config_file)
         runtime_config_path = config_path
+        resolved_config = base_config
         if isinstance(overrides, dict) and overrides:
             try:
-                base_config = self._load_yaml_dict(config_file)
                 merged_config = self._apply_overrides(base_config, overrides)
             except (TypeError, ValueError) as exc:
                 self._json_response(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
                 return
+            resolved_config = merged_config
             runtime_config_path = self._write_runtime_config(root, run_id, merged_config)
+
+        missing_keys = self._missing_api_keys(resolved_config, root)
+        if missing_keys:
+            self._json_response(
+                HTTPStatus.BAD_REQUEST,
+                {
+                    "error": "Missing API key(s). Configure in Settings first.",
+                    "missing_api_keys": missing_keys,
+                },
+            )
+            return
 
         cmd = [sys.executable, "control_agent.py", "--config", runtime_config_path, "--run_id", run_id]
         if dry_run:

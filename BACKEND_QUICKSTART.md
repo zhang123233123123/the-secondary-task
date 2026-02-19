@@ -9,6 +9,8 @@ python3 -m pip install -r requirements.txt
 ```bash
 export DEEPSEEK_API_KEY="你的key"
 ```
+或使用前端设置页写入本地 `.env.local`（推荐）：
+- `http://127.0.0.1:8000/frontend/settings-api.html`
 
 ## 3. 冒烟运行（前 5 个对话）
 ```bash
@@ -38,9 +40,12 @@ python3 dev_server.py --port 8000
 - 配置页: `http://127.0.0.1:8000/frontend/experiment-setup.html`
 - 监控页: `http://127.0.0.1:8000/frontend/live-monitor.html`
 - 结果页: `http://127.0.0.1:8000/frontend/results-analysis.html`
+- Key 设置页: `http://127.0.0.1:8000/frontend/settings-api.html`
 
 ## 9. 本地接口
 - `GET http://127.0.0.1:8000/health`
 - `GET http://127.0.0.1:8000/runs`
 - `GET http://127.0.0.1:8000/run/status?run_id=<run_id>`
+- `GET http://127.0.0.1:8000/settings/apikey/status`
+- `POST http://127.0.0.1:8000/settings/apikey`
 - `POST http://127.0.0.1:8000/run/start`
