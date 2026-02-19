@@ -10,15 +10,14 @@ class JsonlWriter:
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.results_path = self.output_dir / f"results_{run_id}.jsonl"
-        self.flush_policy = flush_policy
+        self.flush_policy = flush_policy  # Deprecated; writes are always flushed per turn.
         self._fh = self.results_path.open("a", encoding="utf-8")
         self.rows_written = 0
 
     def write(self, row: dict[str, Any]) -> None:
         self._fh.write(json.dumps(row, ensure_ascii=False) + "\n")
         self.rows_written += 1
-        if self.flush_policy == "per_turn":
-            self._fh.flush()
+        self._fh.flush()
 
     def close(self) -> None:
         self._fh.flush()
