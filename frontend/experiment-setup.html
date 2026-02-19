@@ -205,7 +205,7 @@
                   </div>
                   <div>
                     <h3 class="text-white font-medium text-sm">Dialogue Dataset</h3>
-                    <p class="text-text-subtle text-xs font-mono mt-0.5">
+                    <p id="setup-dialogues-name" class="text-text-subtle text-xs font-mono mt-0.5">
                       dialogues.jsonl
                     </p>
                   </div>
@@ -221,8 +221,8 @@
                 <span class="text-xs text-green-500 font-medium">100%</span>
               </div>
               <div class="flex justify-between text-xs text-text-subtle font-mono">
-                <span>14.2 MB</span>
-                <span>Uploaded</span>
+                <span id="setup-dialogues-size">-</span>
+                <span id="setup-dialogues-status">Checking...</span>
               </div>
             </div>
             <!-- File Drop Zone 2: System Prompts -->
@@ -238,7 +238,7 @@
                   </div>
                   <div>
                     <h3 class="text-white font-medium text-sm">System Prompts</h3>
-                    <p class="text-text-subtle text-xs font-mono mt-0.5">prompts.json</p>
+                    <p id="setup-prompts-name" class="text-text-subtle text-xs font-mono mt-0.5">prompts.json</p>
                   </div>
                 </div>
                 <button class="text-text-subtle hover:text-white transition-colors">
@@ -252,8 +252,8 @@
                 <span class="text-xs text-green-500 font-medium">100%</span>
               </div>
               <div class="flex justify-between text-xs text-text-subtle font-mono">
-                <span>2.8 KB</span>
-                <span>Uploaded</span>
+                <span id="setup-prompts-size">-</span>
+                <span id="setup-prompts-status">Checking...</span>
               </div>
             </div>
             <!-- Additional Upload Placeholder -->
@@ -294,12 +294,11 @@
                 </label>
                 <div class="relative">
                   <select
+                    id="setup-generator-model"
                     class="w-full appearance-none bg-background-dark border border-border-dark text-white rounded-lg py-3 px-4 pr-10 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow"
                   >
-                    <option value="gpt-4">GPT-4 (OpenAI)</option>
-                    <option value="claude-3">Claude 3 Opus (Anthropic)</option>
-                    <option selected="" value="llama-3">Llama 3 70B (Meta)</option>
-                    <option value="mistral-large">Mistral Large</option>
+                    <option value="deepseek-chat">DeepSeek Chat</option>
+                    <option value="deepseek-reasoner">DeepSeek Reasoner</option>
                   </select>
                   <div
                     class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-text-subtle"
@@ -322,10 +321,11 @@
                 </label>
                 <div class="relative">
                   <select
+                    id="setup-judge-model"
                     class="w-full appearance-none bg-background-dark border border-border-dark text-white rounded-lg py-3 px-4 pr-10 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow"
                   >
-                    <option selected="" value="gpt-4">GPT-4 Turbo (OpenAI)</option>
-                    <option value="claude-3">Claude 3 Sonnet (Anthropic)</option>
+                    <option value="deepseek-chat">DeepSeek Chat</option>
+                    <option value="deepseek-reasoner">DeepSeek Reasoner</option>
                   </select>
                   <div
                     class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-text-subtle"
@@ -345,6 +345,7 @@
                   <label class="text-sm font-medium text-white flex gap-2 items-center">
                     Temperature
                     <span
+                      id="setup-temperature-value"
                       class="text-xs bg-primary/20 text-primary px-1.5 py-0.5 rounded font-mono"
                       >0.7</span
                     >
@@ -354,6 +355,7 @@
                 <div class="flex items-center gap-4">
                   <span class="material-symbols-outlined text-text-subtle text-lg">ac_unit</span>
                   <input
+                    id="setup-temperature"
                     class="w-full h-2 bg-border-dark rounded-lg appearance-none cursor-pointer"
                     max="1"
                     min="0"
@@ -373,9 +375,11 @@
                 <div class="flex items-center gap-4">
                   <div class="relative flex-1">
                     <input
+                      id="setup-max-turns"
                       class="w-full bg-background-dark border border-border-dark text-white rounded-lg py-3 px-4 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-mono transition-shadow"
                       type="number"
                       value="10"
+                      min="1"
                     />
                     <span
                       class="absolute right-4 top-3 text-text-subtle text-sm font-mono"
@@ -403,13 +407,13 @@
                 >
                   <input
                     class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-border-dark checked:border-primary transition-all duration-300"
-                    id="toggle1"
+                    id="setup-resume-strategy"
                     name="toggle"
                     type="checkbox"
                   />
                   <label
                     class="toggle-label block overflow-hidden h-6 rounded-full bg-background-dark border border-border-dark cursor-pointer"
-                    for="toggle1"
+                    for="setup-resume-strategy"
                   ></label>
                 </div>
               </div>
@@ -426,13 +430,13 @@
                   <input
                     checked=""
                     class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-border-dark checked:border-primary transition-all duration-300"
-                    id="toggle2"
+                    id="setup-abort-on-error"
                     name="toggle"
                     type="checkbox"
                   />
                   <label
                     class="toggle-label block overflow-hidden h-6 rounded-full bg-background-dark border border-border-dark cursor-pointer"
-                    for="toggle2"
+                    for="setup-abort-on-error"
                   ></label>
                 </div>
               </div>
@@ -456,6 +460,7 @@
                 Dry Run
               </label>
               <button
+                id="setup-save-draft-btn"
                 class="px-6 py-3 rounded-lg border border-border-dark bg-background-dark text-white font-medium hover:bg-card-dark transition-colors w-full sm:w-auto"
               >
                 Save Draft
@@ -478,9 +483,24 @@
     </div>
     <script>
       (function () {
+        const DEFAULT_CONFIG_PATH = "config.yaml";
         const statusText = document.getElementById("setup-status-text");
         const startBtn = document.getElementById("initialize-run-btn");
+        const saveDraftBtn = document.getElementById("setup-save-draft-btn");
         const dryRunCheckbox = document.getElementById("dry-run-checkbox");
+        const generatorModelInput = document.getElementById("setup-generator-model");
+        const judgeModelInput = document.getElementById("setup-judge-model");
+        const temperatureInput = document.getElementById("setup-temperature");
+        const temperatureValue = document.getElementById("setup-temperature-value");
+        const maxTurnsInput = document.getElementById("setup-max-turns");
+        const resumeStrategyToggle = document.getElementById("setup-resume-strategy");
+        const abortOnErrorToggle = document.getElementById("setup-abort-on-error");
+        const dialoguesName = document.getElementById("setup-dialogues-name");
+        const dialoguesSize = document.getElementById("setup-dialogues-size");
+        const dialoguesStatus = document.getElementById("setup-dialogues-status");
+        const promptsName = document.getElementById("setup-prompts-name");
+        const promptsSize = document.getElementById("setup-prompts-size");
+        const promptsStatus = document.getElementById("setup-prompts-status");
         const monitorLink = document.getElementById("setup-open-monitor");
         const resultsLink = document.getElementById("setup-open-results");
         const monitorTopLink = document.getElementById("setup-open-monitor-top");
@@ -490,11 +510,18 @@
         const navExp = document.getElementById("setup-nav-exp");
         const params = new URLSearchParams(window.location.search);
         let currentRunId = params.get("run_id");
+        const configPath = params.get("config_path") || DEFAULT_CONFIG_PATH;
         let statusTimerId = null;
+        let defaultsLoaded = false;
 
         function withRunId(path, runId) {
-          if (!runId) return path;
-          return path + "?run_id=" + encodeURIComponent(runId);
+          const q = new URLSearchParams();
+          if (runId) q.set("run_id", runId);
+          if (configPath && configPath !== DEFAULT_CONFIG_PATH) {
+            q.set("config_path", configPath);
+          }
+          const suffix = q.toString();
+          return suffix ? path + "?" + suffix : path;
         }
 
         function syncLinks(runId) {
@@ -505,6 +532,95 @@
           if (monitorTopLink) monitorTopLink.href = withRunId("/frontend/live-monitor.html", runId);
           if (resultsTopLink) resultsTopLink.href = withRunId("/frontend/results-analysis.html", runId);
           if (runLinksWrap) runLinksWrap.classList.remove("hidden");
+        }
+
+        function formatBytes(sizeBytes) {
+          if (!sizeBytes) return "0 B";
+          const units = ["B", "KB", "MB", "GB"];
+          let value = Number(sizeBytes);
+          let unitIndex = 0;
+          while (value >= 1024 && unitIndex < units.length - 1) {
+            value /= 1024;
+            unitIndex += 1;
+          }
+          return value.toFixed(value < 10 && unitIndex > 0 ? 1 : 0) + " " + units[unitIndex];
+        }
+
+        function setFileInfo(nameEl, sizeEl, statusEl, fileInfo) {
+          if (!fileInfo) return;
+          if (nameEl && fileInfo.relative_path) nameEl.textContent = fileInfo.relative_path;
+          if (sizeEl) sizeEl.textContent = fileInfo.exists ? formatBytes(fileInfo.size_bytes) : "-";
+          if (statusEl) statusEl.textContent = fileInfo.exists ? "Ready" : "Missing";
+          if (statusEl) {
+            statusEl.classList.toggle("text-green-500", !!fileInfo.exists);
+            statusEl.classList.toggle("text-red-400", !fileInfo.exists);
+          }
+        }
+
+        function collectOverrides() {
+          const maxTurnsRaw = Number(maxTurnsInput?.value ?? 10);
+          const maxTurns = Number.isFinite(maxTurnsRaw) && maxTurnsRaw > 0 ? Math.floor(maxTurnsRaw) : 10;
+          const temperatureRaw = Number(temperatureInput?.value ?? 0.7);
+          const temperature = Number.isFinite(temperatureRaw) ? temperatureRaw : 0.7;
+          return {
+            generator_model: generatorModelInput?.value || "deepseek-chat",
+            judge_model: judgeModelInput?.value || "deepseek-chat",
+            temperature: Math.max(0, Math.min(1, temperature)),
+            max_turns: maxTurns,
+            resume_strategy: resumeStrategyToggle?.checked ? "reconstruct" : "skip",
+            abort_on_error: !!abortOnErrorToggle?.checked,
+          };
+        }
+
+        function applyDefaults(defaults) {
+          if (!defaults || defaultsLoaded) return;
+          if (generatorModelInput && defaults.generator_model) generatorModelInput.value = defaults.generator_model;
+          if (judgeModelInput && defaults.judge_model) judgeModelInput.value = defaults.judge_model;
+          if (temperatureInput && typeof defaults.temperature === "number") {
+            temperatureInput.value = String(defaults.temperature);
+          }
+          if (maxTurnsInput && typeof defaults.max_turns === "number") {
+            maxTurnsInput.value = String(defaults.max_turns);
+          }
+          if (resumeStrategyToggle) {
+            resumeStrategyToggle.checked = String(defaults.resume_strategy || "") !== "skip";
+          }
+          if (abortOnErrorToggle) {
+            abortOnErrorToggle.checked = !!defaults.abort_on_error;
+          }
+          updateTemperatureBadge();
+          defaultsLoaded = true;
+        }
+
+        function updateTemperatureBadge() {
+          if (!temperatureInput || !temperatureValue) return;
+          temperatureValue.textContent = Number(temperatureInput.value).toFixed(1);
+        }
+
+        async function refreshInputsStatus() {
+          try {
+            const response = await fetch(
+              "/inputs/status?config_path=" + encodeURIComponent(configPath),
+            );
+            if (!response.ok) throw new Error("Failed to load input status");
+            const data = await response.json();
+            setFileInfo(dialoguesName, dialoguesSize, dialoguesStatus, data.files?.dialogues);
+            setFileInfo(promptsName, promptsSize, promptsStatus, data.files?.prompts);
+            applyDefaults(data.defaults || {});
+            const missing = [];
+            if (!data.files?.dialogues?.exists) missing.push("dialogues.jsonl");
+            if (!data.files?.prompts?.exists) missing.push("prompts.json");
+            if (!data.files?.config?.exists) missing.push(configPath);
+            if (statusText) {
+              statusText.textContent = missing.length
+                ? "Missing input files: " + missing.join(", ")
+                : "Configuration valid. Ready to initialize.";
+            }
+          } catch (error) {
+            if (statusText) {
+              statusText.textContent = "Input validation failed: " + String(error.message || error);
+            }
+          }
         }
 
         function stopStatusPolling() {
@@ -536,6 +652,39 @@
           }, 2000);
         }
 
+        async function saveDraft() {
+          if (!saveDraftBtn) return;
+          saveDraftBtn.disabled = true;
+          saveDraftBtn.classList.add("opacity-60", "cursor-not-allowed");
+          if (statusText) statusText.textContent = "Saving draft...";
+          try {
+            const response = await fetch("/setup/draft", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                config_path: configPath,
+                dry_run: !!(dryRunCheckbox && dryRunCheckbox.checked),
+                overrides: collectOverrides(),
+              }),
+            });
+            const data = await response.json();
+            if (!response.ok || !data.ok) {
+              throw new Error(data.error || "Failed to save draft");
+            }
+            if (statusText) {
+              statusText.innerHTML =
+                'Draft saved: <span class="text-primary font-mono">' + data.draft_file + "</span>";
+            }
+          } catch (error) {
+            if (statusText) {
+              statusText.textContent = "Save draft failed: " + String(error.message || error);
+            }
+          } finally {
+            saveDraftBtn.disabled = false;
+            saveDraftBtn.classList.remove("opacity-60", "cursor-not-allowed");
+          }
+        }
+
         async function startRun() {
           if (!startBtn) return;
           stopStatusPolling();
@@ -548,8 +697,9 @@
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                config_path: "config.yaml",
+                config_path: configPath,
                 dry_run: !!(dryRunCheckbox && dryRunCheckbox.checked),
+                overrides: collectOverrides(),
               }),
             });
             const data = await response.json();
@@ -574,8 +724,12 @@
           }
         }
 
+        if (temperatureInput) temperatureInput.addEventListener("input", updateTemperatureBadge);
+        if (saveDraftBtn) saveDraftBtn.addEventListener("click", saveDraft);
         if (startBtn) startBtn.addEventListener("click", startRun);
+        updateTemperatureBadge();
         syncLinks(currentRunId);
+        refreshInputsStatus();
         if (currentRunId) startStatusPolling(currentRunId);
       })();
     </script>

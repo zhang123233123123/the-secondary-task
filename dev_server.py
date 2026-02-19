@@ -11,11 +11,80 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+import yaml
+
 from backend.runs_index import build_runs_index, write_runs_index
 
 
 class DevRequestHandler(SimpleHTTPRequestHandler):
     jobs: dict[str, dict] = {}
+
+    @staticmethod
+    def _resolve_repo_path(root: Path, raw_path: str) -> Path:
+        candidate = (root / raw_path).resolve()
+        if root != candidate and root not in candidate.parents:
+            raise ValueError("path must stay inside repository root")
+        return candidate
+
+    @staticmethod
+    def _load_yaml_dict(path: Path) -> dict:
+        if not path.exists():
+            return {}
+        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+
+    @staticmethod
+    def _write_runtime_config(root: Path, run_id: str, payload: dict) -> str:
+        runtime_dir = root / "output" / "runtime_configs"
+        runtime_dir.mkdir(parents=True, exist_ok=True)
+        config_path = runtime_dir / f"runtime_config_{run_id}.yaml"
+        config_path.write_text(
+            yaml.safe_dump(payload, sort_keys=False, allow_unicode=False),
+            encoding="utf-8",
+        )
+        return str(config_path.relative_to(root))
+
+    @staticmethod
+    def _apply_overrides(base_config: dict, overrides: dict) -> dict:
+        merged = json.loads(json.dumps(base_config))
+        llm3 = merged.setdefault("llm3", {})
+        llm4 = merged.setdefault("llm4", {})
+
+        if "max_turns" in overrides:
+            merged["max_turns"] = max(1, int(overrides["max_turns"]))
+        if "temperature" in overrides:
+            llm3["temperature"] = float(overrides["temperature"])
+        if "generator_model" in overrides and overrides["generator_model"]:
+            llm3["model"] = str(overrides["generator_model"])
+        if "judge_model" in overrides and overrides["judge_model"]:
+            llm4["model"] = str(overrides["judge_model"])
+        if "resume_strategy" in overrides:
+            strategy = str(overrides["resume_strategy"])
+            if strategy in {"reconstruct", "skip"}:
+                merged["resume_strategy"] = strategy
+        if "abort_on_error" in overrides:
+            merged["abort_on_error"] = bool(overrides["abort_on_error"])
+        return merged
+
+    @staticmethod
+    def _file_status(path: Path) -> dict:
+        if not path.exists():
+            return {
+                "exists": False,
+                "size_bytes": 0,
+                "modified_at_utc": None,
+                "relative_path": str(path.name),
+            }
+        stat = path.stat()
+        return {
+            "exists": True,
+            "size_bytes": stat.st_size,
+            "modified_at_utc": dt.datetime.fromtimestamp(
+                stat.st_mtime,
+                tz=dt.timezone.utc,
+            ).isoformat(),
+            "relative_path": str(path.name),
+        }
 
     def _json_response(self, status: int, payload: dict) -> None:
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -72,6 +141,41 @@ class DevRequestHandler(SimpleHTTPRequestHandler):
             self._json_response(HTTPStatus.OK, {"ok": True})
             return
         parsed = urlparse(self.path)
+        if parsed.path == "/inputs/status":
+            query = parse_qs(parsed.query)
+            config_path_raw = str(query.get("config_path", ["config.yaml"])[0])
+            try:
+                config_path = self._resolve_repo_path(root, config_path_raw)
+            except ValueError as exc:
+                self._json_response(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
+                return
+
+            files = {
+                "config": self._file_status(config_path),
+                "dialogues": self._file_status(root / "dialogues.jsonl"),
+                "prompts": self._file_status(root / "prompts.json"),
+            }
+            raw_config = self._load_yaml_dict(config_path)
+            llm3 = raw_config.get("llm3", {}) if isinstance(raw_config.get("llm3"), dict) else {}
+            llm4 = raw_config.get("llm4", {}) if isinstance(raw_config.get("llm4"), dict) else {}
+            self._json_response(
+                HTTPStatus.OK,
+                {
+                    "config_path": str(config_path.relative_to(root))
+                    if config_path.exists()
+                    else config_path_raw,
+                    "files": files,
+                    "defaults": {
+                        "generator_model": str(llm3.get("model", "deepseek-chat")),
+                        "judge_model": str(llm4.get("model", "deepseek-chat")),
+                        "temperature": float(llm3.get("temperature", 0.7)),
+                        "max_turns": int(raw_config.get("max_turns", 10)),
+                        "resume_strategy": str(raw_config.get("resume_strategy", "reconstruct")),
+                        "abort_on_error": bool(raw_config.get("abort_on_error", False)),
+                    },
+                },
+            )
+            return
         if parsed.path == "/runs":
             output_dir = root / "output"
             index_path = output_dir / "runs_index.json"
@@ -105,6 +209,37 @@ class DevRequestHandler(SimpleHTTPRequestHandler):
         super().do_GET()
 
     def do_POST(self) -> None:  # noqa: N802
+        if self.path == "/setup/draft":
+            try:
+                payload = self._read_json_body()
+            except json.JSONDecodeError:
+                self._json_response(HTTPStatus.BAD_REQUEST, {"error": "invalid json"})
+                return
+            root = Path(self.directory or ".").resolve()
+            output_dir = root / "output" / "drafts"
+            output_dir.mkdir(parents=True, exist_ok=True)
+            ts = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%d_%H%M%S")
+            file_name = f"draft_{ts}_{uuid.uuid4().hex[:6]}.json"
+            draft_path = output_dir / file_name
+            draft_payload = {
+                "saved_at_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+                "config_path": payload.get("config_path", "config.yaml"),
+                "dry_run": bool(payload.get("dry_run", False)),
+                "overrides": payload.get("overrides", {}),
+            }
+            draft_path.write_text(
+                json.dumps(draft_payload, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+            self._json_response(
+                HTTPStatus.OK,
+                {
+                    "ok": True,
+                    "draft_file": str(draft_path.relative_to(root)),
+                },
+            )
+            return
+
         if self.path != "/run/start":
             self._json_response(HTTPStatus.NOT_FOUND, {"error": "not found"})
             return
@@ -118,6 +253,7 @@ class DevRequestHandler(SimpleHTTPRequestHandler):
         root = Path(self.directory or ".").resolve()
         config_path = str(payload.get("config_path", "config.yaml"))
         dry_run = bool(payload.get("dry_run", False))
+        overrides = payload.get("overrides", {})
         requested_run_id = payload.get("run_id")
         if requested_run_id:
             run_id = str(requested_run_id)
@@ -125,7 +261,29 @@ class DevRequestHandler(SimpleHTTPRequestHandler):
             ts = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%d_%H%M%S")
             run_id = f"run_{ts}_{uuid.uuid4().hex[:6]}"
 
-        cmd = [sys.executable, "control_agent.py", "--config", config_path, "--run_id", run_id]
+        try:
+            config_file = self._resolve_repo_path(root, config_path)
+        except ValueError as exc:
+            self._json_response(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
+            return
+        if not config_file.exists():
+            self._json_response(
+                HTTPStatus.BAD_REQUEST,
+                {"error": f"Config file not found: {config_path}"},
+            )
+            return
+
+        runtime_config_path = config_path
+        if isinstance(overrides, dict) and overrides:
+            try:
+                base_config = self._load_yaml_dict(config_file)
+                merged_config = self._apply_overrides(base_config, overrides)
+            except (TypeError, ValueError) as exc:
+                self._json_response(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
+                return
+            runtime_config_path = self._write_runtime_config(root, run_id, merged_config)
+
+        cmd = [sys.executable, "control_agent.py", "--config", runtime_config_path, "--run_id", run_id]
         if dry_run:
             cmd.append("--dry_run")
 
@@ -140,7 +298,7 @@ class DevRequestHandler(SimpleHTTPRequestHandler):
             "pid": process.pid,
             "started_at_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
             "dry_run": dry_run,
-            "config_path": config_path,
+            "config_path": runtime_config_path,
         }
         self._json_response(
             HTTPStatus.ACCEPTED,
@@ -149,6 +307,7 @@ class DevRequestHandler(SimpleHTTPRequestHandler):
                 "run_id": run_id,
                 "pid": process.pid,
                 "dry_run": dry_run,
+                "config_path": runtime_config_path,
             },
         )
 
