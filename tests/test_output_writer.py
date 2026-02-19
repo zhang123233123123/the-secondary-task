@@ -11,5 +11,7 @@ def test_writer_flushes_on_every_write(tmp_path):
     text = writer.results_path.read_text(encoding="utf-8").strip()
     assert text
     assert json.loads(text)["value"] == 42
+    assert writer.requested_flush_policy == "buffered"
+    assert writer.effective_flush_policy == "per_turn"
 
     writer.close()

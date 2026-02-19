@@ -279,6 +279,8 @@ def run_experiment(
         "expected_rows": stats.expected_rows,
         "actual_rows": total_rows,
         "new_rows_written": writer.rows_written,
+        "flush_policy_requested": writer.requested_flush_policy,
+        "flush_policy_effective": writer.effective_flush_policy,
         "error_rows": error_rows,
         "error_rate": (error_rows / total_rows) if total_rows else 0.0,
         "generate_errors": final_resume_state.generate_errors,

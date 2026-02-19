@@ -19,6 +19,8 @@ def test_write_report_creates_markdown_summary(tmp_path):
     summary = {
         "expected_rows": 2,
         "actual_rows": 2,
+        "flush_policy_requested": "buffered",
+        "flush_policy_effective": "per_turn",
         "error_rows": 1,
         "error_rate": 0.5,
         "refusal_count": 0,
@@ -46,6 +48,8 @@ def test_write_report_creates_markdown_summary(tmp_path):
     assert report_path.exists()
     assert "Run Report: run_test" in report
     assert "dry_run: `true`" in report
+    assert "flush_policy_requested: `buffered`" in report
+    assert "flush_policy_effective: `per_turn`" in report
     assert "error_rate: `0.5`" in report
     assert "refusal_rate: `0.0`" in report
     assert "## Validation Evidence" in report

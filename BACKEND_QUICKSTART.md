@@ -32,6 +32,9 @@ python3 control_agent.py --config config.yaml --run_id run_20260218_123000_ab12c
 - `output/run_summary_{run_id}.json`
 - `output/report_{run_id}.md`
 
+说明：
+- 运行时始终按 turn 立即 flush（`flush_policy_effective=per_turn`），用于保证断点续传一致性。
+
 ## 7. 启动前后端联调服务
 ```bash
 python3 dev_server.py --port 8000

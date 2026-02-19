@@ -38,6 +38,8 @@ def write_report(
         f"- dry_run: `{str(dry_run).lower()}`",
         f"- results_file: `results_{run_id}.jsonl`",
         f"- summary_file: `run_summary_{run_id}.json`",
+        f"- flush_policy_requested: `{summary.get('flush_policy_requested')}`",
+        f"- flush_policy_effective: `{summary.get('flush_policy_effective')}`",
         "",
         "## Summary",
         f"- expected_rows: `{summary.get('expected_rows')}`",
