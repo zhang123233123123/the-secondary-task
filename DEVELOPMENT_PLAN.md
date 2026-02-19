@@ -49,3 +49,18 @@
 2. 默认 `abort_on_error=false`。
 3. 默认 `resume_strategy=reconstruct`。
 4. 默认每个“小点”完成后先验证再提交一次 commit（按测试通过点粒度）。
+
+## 7. 新增离线准备阶段（LLM1/LLM2）
+1. LLM1/LLM2 作为系统内“离线准备流水线”实现，不进入运行时轮换。
+2. 新增命令：
+- `prepare`：生成候选 `prompts/dialogues`。
+- `approve-prompts` / `approve-dialogues`：人工审核后冻结版本。
+- `use-frozen`：把 `config.yaml` 绑定到冻结版本并开启审批校验。
+3. 运行阶段默认强制校验：
+- `require_approved_prompts=true`
+- `require_approved_dialogues=true`
+4. 冻结仓库目录：
+- `frozen_inputs/index.json`
+- `frozen_inputs/prompts/`
+- `frozen_inputs/dialogues/`
+- `frozen_inputs/reviews/`

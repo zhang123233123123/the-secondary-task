@@ -1,0 +1,11 @@
+{
+  "kind": "dialogues",
+  "version": "v_initial",
+  "reviewer": "bootstrap",
+  "review_note": "Initial baseline imported from dialogues.jsonl",
+  "candidate_file": "dialogues.jsonl",
+  "candidate_sha256": "5e22c8e30698b5a681d18cb599b2abc19f24ebcffa5f0661e41b22f2cef673f5",
+  "frozen_file": "frozen_inputs/dialogues/dialogues_v_initial.jsonl",
+  "frozen_sha256": "5e22c8e30698b5a681d18cb599b2abc19f24ebcffa5f0661e41b22f2cef673f5",
+  "approved_at_utc": "2026-02-19T00:00:00+00:00"
+}

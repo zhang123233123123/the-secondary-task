@@ -1,0 +1,30 @@
+{
+  "active": {
+    "prompts_version": "v_initial",
+    "dialogues_version": "v_initial"
+  },
+  "prompts_versions": [
+    {
+      "version": "v_initial",
+      "file": "frozen_inputs/prompts/prompts_v_initial.json",
+      "sha256": "986a4fcd29e9fe8561af57459abdad97ab8e953b42196e812dce090d4cbabdf1",
+      "approved_by": "bootstrap",
+      "approved_at_utc": "2026-02-19T00:00:00+00:00",
+      "review_note": "Initial baseline imported from prompts.json",
+      "candidate_file": "prompts.json",
+      "candidate_sha256": "986a4fcd29e9fe8561af57459abdad97ab8e953b42196e812dce090d4cbabdf1"
+    }
+  ],
+  "dialogues_versions": [
+    {
+      "version": "v_initial",
+      "file": "frozen_inputs/dialogues/dialogues_v_initial.jsonl",
+      "sha256": "5e22c8e30698b5a681d18cb599b2abc19f24ebcffa5f0661e41b22f2cef673f5",
+      "approved_by": "bootstrap",
+      "approved_at_utc": "2026-02-19T00:00:00+00:00",
+      "review_note": "Initial baseline imported from dialogues.jsonl",
+      "candidate_file": "dialogues.jsonl",
+      "candidate_sha256": "5e22c8e30698b5a681d18cb599b2abc19f24ebcffa5f0661e41b22f2cef673f5"
+    }
+  ]
+}
