@@ -33,41 +33,38 @@ def _request_json(base_url: str, path: str, method: str = "GET", payload: dict |
         return exc.code, json.loads(exc.read().decode("utf-8"))
 
 
-def test_settings_apikey_status_and_save(tmp_path):
+def test_settings_apikey_status_env_only(tmp_path, monkeypatch):
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
     server, thread, base_url = _start_server(tmp_path)
     try:
         status_code, payload = _request_json(base_url, "/settings/apikey/status")
         assert status_code == 200
         assert payload["configured"] is False
 
-        bad_code, bad_payload = _request_json(
-            base_url,
-            "/settings/apikey",
-            method="POST",
-            payload={"deepseek_api_key": "short"},
-        )
-        assert bad_code == 400
-        assert "at least 10 chars" in bad_payload["error"]
-
-        save_code, save_payload = _request_json(
+        post_code, post_payload = _request_json(
             base_url,
             "/settings/apikey",
             method="POST",
             payload={"deepseek_api_key": "sk-test-1234567890"},
         )
-        assert save_code == 200
-        assert save_payload["ok"] is True
-        assert save_payload["configured"] is True
-        assert save_payload["source"] == ".env.local"
+        assert post_code == 410
+        assert "disabled" in post_payload["error"]
+        assert post_payload["required_env_key"] == "DEEPSEEK_API_KEY"
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
 
-        env_path = tmp_path / ".env.local"
-        assert env_path.exists()
-        assert "DEEPSEEK_API_KEY=" in env_path.read_text(encoding="utf-8")
 
-        status_code_2, payload_2 = _request_json(base_url, "/settings/apikey/status")
-        assert status_code_2 == 200
-        assert payload_2["configured"] is True
-        assert payload_2["masked_key"] is not None
+def test_settings_apikey_status_uses_process_env(tmp_path, monkeypatch):
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-test-1234567890")
+    server, thread, base_url = _start_server(tmp_path)
+    try:
+        status_code, payload = _request_json(base_url, "/settings/apikey/status")
+        assert status_code == 200
+        assert payload["configured"] is True
+        assert payload["source"] == "process_env"
+        assert payload["masked_key"] is not None
     finally:
         server.shutdown()
         server.server_close()

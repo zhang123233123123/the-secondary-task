@@ -9,7 +9,6 @@ from dataclasses import dataclass
 from typing import Any
 
 from .runtime_config import LLMConfig
-from .env_store import resolve_secret
 
 
 @dataclass
@@ -28,8 +27,7 @@ class OpenAICompatibleChatClient:
         self.config = config
 
     def chat(self, messages: list[dict[str, str]], timeout_seconds: float) -> ChatResult:
-        local_env_path = os.environ.get("LOCAL_ENV_PATH", ".env.local")
-        api_key = resolve_secret(self.config.api_key_env, local_env_path)
+        api_key = os.environ.get(self.config.api_key_env)
         if not api_key:
             raise LLMError(f"Missing API key environment variable: {self.config.api_key_env}")
 
