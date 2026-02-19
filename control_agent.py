@@ -32,7 +32,8 @@ def main() -> int:
             "Run complete. "
             f"run_id={result['run_id']} "
             f"results={result['results_path']} "
-            f"summary={result['summary_path']}"
+            f"summary={result['summary_path']} "
+            f"report={result['report_path']}"
         )
         return 0
     except Exception as exc:  # noqa: BLE001

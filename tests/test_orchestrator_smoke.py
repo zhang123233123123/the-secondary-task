@@ -74,6 +74,7 @@ def test_run_experiment_writes_results_without_api_key(tmp_path):
 
     assert Path(result["results_path"]).exists()
     assert Path(result["summary_path"]).exists()
+    assert Path(result["report_path"]).exists()
     assert result["summary"]["actual_rows"] == 6
     assert result["summary"]["generate_errors"] == 6
 

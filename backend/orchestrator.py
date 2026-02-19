@@ -14,6 +14,7 @@ from .llm_clients import (
     parse_judge_json,
 )
 from .output_writer import JsonlWriter, write_summary
+from .report_writer import write_report
 from .resume import load_resume_state
 from .runs_index import write_runs_index
 from .schema_validation import validate_with_simple_schema
@@ -292,12 +293,20 @@ def run_experiment(
         **hashes,
     }
     summary_path = write_summary(config.output_dir, actual_run_id, summary)
+    report_path = write_report(
+        config.output_dir,
+        actual_run_id,
+        summary,
+        dry_run=dry_run,
+        results_path=writer.results_path,
+    )
     write_runs_index(config.output_dir)
     if abort_reason is not None:
         raise RuntimeError(abort_reason)
     return {
         "run_id": actual_run_id,
         "summary_path": str(summary_path),
+        "report_path": str(report_path),
         "results_path": str(writer.results_path),
         "summary": summary,
     }
