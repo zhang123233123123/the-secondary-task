@@ -9,7 +9,7 @@ python3 -m pip install -r requirements.txt
 ```bash
 export DEEPSEEK_API_KEY="你的key"
 ```
-或使用前端设置页写入本地 `.env.local`（推荐）：
+可在设置页检查当前服务进程是否读到了该环境变量：
 - `http://127.0.0.1:8000/frontend/settings-api.html`
 
 ## 3. 冒烟运行（前 5 个对话）
@@ -30,6 +30,7 @@ python3 control_agent.py --config config.yaml --run_id run_20260218_123000_ab12c
 ## 6. 输出文件
 - `output/results_{run_id}.jsonl`
 - `output/run_summary_{run_id}.json`
+- `output/report_{run_id}.md`
 
 ## 7. 启动前后端联调服务
 ```bash
@@ -47,5 +48,4 @@ python3 dev_server.py --port 8000
 - `GET http://127.0.0.1:8000/runs`
 - `GET http://127.0.0.1:8000/run/status?run_id=<run_id>`
 - `GET http://127.0.0.1:8000/settings/apikey/status`
-- `POST http://127.0.0.1:8000/settings/apikey`
 - `POST http://127.0.0.1:8000/run/start`

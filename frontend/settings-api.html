@@ -67,40 +67,27 @@
           <div class="space-y-1">
             <h2 class="text-lg font-semibold">DeepSeek API Key</h2>
             <p class="text-xs text-text-subtle">
-              Saved to <span class="font-mono">.env.local</span> at repo root.
+              Runtime now reads from process environment only.
             </p>
           </div>
 
           <div class="space-y-2">
-            <label for="settings-key-input" class="text-sm text-white">DEEPSEEK_API_KEY</label>
-            <div class="flex gap-2">
-              <input
-                id="settings-key-input"
-                type="password"
-                class="flex-1 bg-background-dark border border-border-dark rounded-lg py-2.5 px-3 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                placeholder="sk-..."
-              />
-              <button
-                id="settings-toggle-visibility"
-                type="button"
-                class="px-3 rounded-lg border border-border-dark text-text-subtle hover:text-white hover:bg-background-dark transition-colors"
-              >
-                Show
-              </button>
+            <label class="text-sm text-white">Required Environment Variable</label>
+            <div class="bg-background-dark border border-border-dark rounded-lg py-2.5 px-3 text-sm font-mono">
+              DEEPSEEK_API_KEY
             </div>
             <p class="text-xs text-text-subtle">
-              Current: <span id="settings-masked-value" class="font-mono">-</span>
+              Current (masked): <span id="settings-masked-value" class="font-mono">-</span>
             </p>
           </div>
 
+          <div class="space-y-2">
+            <p class="text-xs text-text-subtle">Set the key in your shell, then restart `dev_server.py`:</p>
+            <pre class="bg-background-dark border border-border-dark rounded-lg p-3 text-xs font-mono overflow-x-auto"><code>export DEEPSEEK_API_KEY="your_key_here"
+python dev_server.py --port 8000</code></pre>
+          </div>
+
           <div class="flex items-center gap-3">
-            <button
-              id="settings-save-btn"
-              type="button"
-              class="px-5 py-2.5 rounded-lg bg-primary hover:bg-primary-dark font-semibold text-sm transition-colors"
-            >
-              Save API Key
-            </button>
             <button
               id="settings-refresh-btn"
               type="button"
@@ -109,7 +96,6 @@
               Refresh Status
             </button>
           </div>
-
           <div id="settings-message" class="text-sm text-text-subtle">
             Waiting for action...
           </div>
@@ -147,11 +133,8 @@
 
         const badge = document.getElementById("settings-status-badge");
         const maskedValue = document.getElementById("settings-masked-value");
-        const keyInput = document.getElementById("settings-key-input");
         const msg = document.getElementById("settings-message");
-        const saveBtn = document.getElementById("settings-save-btn");
         const refreshBtn = document.getElementById("settings-refresh-btn");
-        const toggleBtn = document.getElementById("settings-toggle-visibility");
         const setupLink = document.getElementById("settings-open-setup");
         const monitorLink = document.getElementById("settings-open-monitor");
         const resultsLink = document.getElementById("settings-open-results");
@@ -187,56 +170,18 @@
             const data = await response.json();
             setBadge(!!data.configured);
             if (maskedValue) maskedValue.textContent = data.masked_key || "-";
-            if (msg) msg.textContent = data.configured ? "API key is ready." : "API key is missing.";
+            if (msg) {
+              msg.textContent = data.configured
+                ? "API key detected in process environment."
+                : "API key is missing in process environment.";
+            }
           } catch (error) {
             if (msg) msg.textContent = "Status check failed: " + String(error.message || error);
             setBadge(false);
           }
         }
 
-        async function saveKey() {
-          const raw = keyInput ? keyInput.value.trim() : "";
-          if (raw.length < 10) {
-            if (msg) msg.textContent = "Invalid key: at least 10 characters required.";
-            return;
-          }
-          if (saveBtn) {
-            saveBtn.disabled = true;
-            saveBtn.classList.add("opacity-60", "cursor-not-allowed");
-          }
-          if (msg) msg.textContent = "Saving...";
-          try {
-            const response = await fetch("/settings/apikey", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ deepseek_api_key: raw }),
-            });
-            const data = await response.json();
-            if (!response.ok || !data.ok) {
-              throw new Error(data.error || "Save failed");
-            }
-            if (keyInput) keyInput.value = "";
-            if (msg) msg.textContent = "Saved successfully to .env.local";
-            await refreshStatus();
-          } catch (error) {
-            if (msg) msg.textContent = "Save failed: " + String(error.message || error);
-          } finally {
-            if (saveBtn) {
-              saveBtn.disabled = false;
-              saveBtn.classList.remove("opacity-60", "cursor-not-allowed");
-            }
-          }
-        }
-
-        function toggleVisibility() {
-          if (!keyInput || !toggleBtn) return;
-          keyInput.type = keyInput.type === "password" ? "text" : "password";
-          toggleBtn.textContent = keyInput.type === "password" ? "Show" : "Hide";
-        }
-
         if (refreshBtn) refreshBtn.addEventListener("click", refreshStatus);
-        if (saveBtn) saveBtn.addEventListener("click", saveKey);
-        if (toggleBtn) toggleBtn.addEventListener("click", toggleVisibility);
         syncLinks();
         refreshStatus();
       })();
