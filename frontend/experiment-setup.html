@@ -165,6 +165,18 @@
               class="px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 text-xs font-mono border border-blue-500/20"
               >v2.4.0-beta</span
             >
+            <a
+              id="setup-open-monitor-top"
+              class="px-3 py-1 rounded-full bg-card-dark text-text-subtle text-xs border border-border-dark hover:text-white transition-colors"
+              href="/frontend/live-monitor.html"
+              >Monitor</a
+            >
+            <a
+              id="setup-open-results-top"
+              class="px-3 py-1 rounded-full bg-card-dark text-text-subtle text-xs border border-border-dark hover:text-white transition-colors"
+              href="/frontend/results-analysis.html"
+              >Results</a
+            >
           </div>
         </div>
         <!-- Content Grid -->
@@ -456,7 +468,7 @@
                 Initialize Run
               </button>
             </div>
-            <div id="setup-run-links" class="hidden flex items-center gap-2 text-xs">
+            <div id="setup-run-links" class="flex items-center gap-2 text-xs">
               <a id="setup-open-monitor" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white" href="/frontend/live-monitor.html">Open Monitor</a>
               <a id="setup-open-results" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white" href="/frontend/results-analysis.html">Open Results</a>
             </div>
@@ -471,6 +483,8 @@
         const dryRunCheckbox = document.getElementById("dry-run-checkbox");
         const monitorLink = document.getElementById("setup-open-monitor");
         const resultsLink = document.getElementById("setup-open-results");
+        const monitorTopLink = document.getElementById("setup-open-monitor-top");
+        const resultsTopLink = document.getElementById("setup-open-results-top");
         const runLinksWrap = document.getElementById("setup-run-links");
         const navHome = document.getElementById("setup-nav-home");
         const navExp = document.getElementById("setup-nav-exp");
@@ -488,10 +502,9 @@
           if (navExp) navExp.href = withRunId("/frontend/results-analysis.html", runId);
           if (monitorLink) monitorLink.href = withRunId("/frontend/live-monitor.html", runId);
           if (resultsLink) resultsLink.href = withRunId("/frontend/results-analysis.html", runId);
-          if (runLinksWrap) {
-            if (runId) runLinksWrap.classList.remove("hidden");
-            else runLinksWrap.classList.add("hidden");
-          }
+          if (monitorTopLink) monitorTopLink.href = withRunId("/frontend/live-monitor.html", runId);
+          if (resultsTopLink) resultsTopLink.href = withRunId("/frontend/results-analysis.html", runId);
+          if (runLinksWrap) runLinksWrap.classList.remove("hidden");
         }
 
         function stopStatusPolling() {
