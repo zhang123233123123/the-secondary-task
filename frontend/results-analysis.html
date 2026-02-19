@@ -115,6 +115,12 @@
               href="/frontend/settings-api.html"
               >Settings</a
             >
+            <a
+              id="results-open-prep"
+              class="text-slate-400 hover:text-white text-sm font-medium transition-colors"
+              href="/frontend/data-preparation.html"
+              >Data Prep</a
+            >
           </nav>
           <!-- User Actions -->
           <div class="flex items-center gap-3">
@@ -349,6 +355,7 @@
         const setupLink = document.getElementById("results-open-setup");
         const monitorLink = document.getElementById("results-open-monitor");
         const settingsLink = document.getElementById("results-open-settings");
+        const prepLink = document.getElementById("results-open-prep");
         const breadcrumbExp = document.getElementById("results-breadcrumb-exp");
         const breadcrumbRun = document.getElementById("results-breadcrumb-run");
         const searchInput = document.getElementById("results-search-input");
@@ -385,6 +392,7 @@
           if (setupLink) setupLink.href = withRunId("/frontend/experiment-setup.html", runId);
           if (monitorLink) monitorLink.href = withRunId("/frontend/live-monitor.html", runId);
           if (settingsLink) settingsLink.href = withRunId("/frontend/settings-api.html", runId);
+          if (prepLink) prepLink.href = withRunId("/frontend/data-preparation.html", runId);
           if (breadcrumbExp) breadcrumbExp.href = withRunId("/frontend/results-analysis.html", runId);
           if (breadcrumbRun) {
             breadcrumbRun.href = withRunId("/frontend/results-analysis.html", runId);

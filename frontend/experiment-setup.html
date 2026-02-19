@@ -183,6 +183,12 @@
               href="/frontend/settings-api.html"
               >Settings</a
             >
+            <a
+              id="setup-open-prep-top"
+              class="px-3 py-1 rounded-full bg-card-dark text-text-subtle text-xs border border-border-dark hover:text-white transition-colors"
+              href="/frontend/data-preparation.html"
+              >Data Prep</a
+            >
           </div>
         </div>
         <!-- Content Grid -->
@@ -480,6 +486,7 @@
               <a id="setup-open-monitor" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white" href="/frontend/live-monitor.html">Open Monitor</a>
               <a id="setup-open-results" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white" href="/frontend/results-analysis.html">Open Results</a>
               <a id="setup-open-settings" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white" href="/frontend/settings-api.html">API Key Settings</a>
+              <a id="setup-open-prep" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white" href="/frontend/data-preparation.html">Data Prep</a>
             </div>
           </div>
         </div>
@@ -519,9 +526,11 @@
         const monitorTopLink = document.getElementById("setup-open-monitor-top");
         const resultsTopLink = document.getElementById("setup-open-results-top");
         const settingsTopLink = document.getElementById("setup-open-settings-top");
+        const prepTopLink = document.getElementById("setup-open-prep-top");
         const runLinksWrap = document.getElementById("setup-run-links");
         const navHome = document.getElementById("setup-nav-home");
         const navExp = document.getElementById("setup-nav-exp");
+        const prepLink = document.getElementById("setup-open-prep");
         const params = new URLSearchParams(window.location.search);
         let currentRunId = params.get("run_id");
         const configPath = params.get("config_path") || DEFAULT_CONFIG_PATH;
@@ -544,9 +553,11 @@
           if (monitorLink) monitorLink.href = withRunId("/frontend/live-monitor.html", runId);
           if (resultsLink) resultsLink.href = withRunId("/frontend/results-analysis.html", runId);
           if (settingsLink) settingsLink.href = withRunId("/frontend/settings-api.html", runId);
+          if (prepLink) prepLink.href = withRunId("/frontend/data-preparation.html", runId);
           if (monitorTopLink) monitorTopLink.href = withRunId("/frontend/live-monitor.html", runId);
           if (resultsTopLink) resultsTopLink.href = withRunId("/frontend/results-analysis.html", runId);
           if (settingsTopLink) settingsTopLink.href = withRunId("/frontend/settings-api.html", runId);
+          if (prepTopLink) prepTopLink.href = withRunId("/frontend/data-preparation.html", runId);
           if (runLinksWrap) runLinksWrap.classList.remove("hidden");
         }
 

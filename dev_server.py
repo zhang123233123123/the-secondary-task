@@ -6,6 +6,7 @@ import json
 import os
 import subprocess
 import sys
+import threading
 import uuid
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -14,11 +15,22 @@ from urllib.parse import parse_qs, urlparse
 
 import yaml
 
+from backend.frozen_registry import (
+    apply_versions_to_config,
+    approve_candidate,
+    load_frozen_index,
+    set_active_versions,
+)
+from backend.prepare_orchestrator import prepare_inputs
 from backend.runs_index import build_runs_index, write_runs_index
+from backend.runtime_config import load_config
 
 
 class DevRequestHandler(SimpleHTTPRequestHandler):
     jobs: dict[str, dict] = {}
+    prepare_jobs: dict[str, dict] = {}
+    last_prepare_task_id: str | None = None
+    jobs_lock = threading.Lock()
     deepseek_key_name = "DEEPSEEK_API_KEY"
 
     @staticmethod
@@ -121,13 +133,14 @@ class DevRequestHandler(SimpleHTTPRequestHandler):
         }
 
     @classmethod
-    def _missing_api_keys(cls, config_payload: dict) -> list[str]:
-        llm3 = config_payload.get("llm3", {}) if isinstance(config_payload.get("llm3"), dict) else {}
-        llm4 = config_payload.get("llm4", {}) if isinstance(config_payload.get("llm4"), dict) else {}
-        required = {
-            str(llm3.get("api_key_env", cls.deepseek_key_name)),
-            str(llm4.get("api_key_env", cls.deepseek_key_name)),
-        }
+    def _missing_api_keys_for_roles(cls, config_payload: dict, roles: tuple[str, ...]) -> list[str]:
+        required: set[str] = set()
+        for role in roles:
+            role_config = config_payload.get(role, {})
+            if isinstance(role_config, dict):
+                required.add(str(role_config.get("api_key_env", cls.deepseek_key_name)))
+            else:
+                required.add(cls.deepseek_key_name)
         missing: list[str] = []
         for key in sorted(required):
             if not key:
@@ -135,6 +148,130 @@ class DevRequestHandler(SimpleHTTPRequestHandler):
             if not os.environ.get(key):
                 missing.append(key)
         return missing
+
+    @classmethod
+    def _missing_api_keys(cls, config_payload: dict) -> list[str]:
+        return cls._missing_api_keys_for_roles(config_payload, ("llm3", "llm4"))
+
+    @staticmethod
+    def _relative_to_root(root: Path, path: Path, fallback: str) -> str:
+        try:
+            return str(path.resolve().relative_to(root))
+        except ValueError:
+            return fallback
+
+    def _resolve_config_and_index_paths(
+        self,
+        root: Path,
+        *,
+        config_path_raw: str,
+        index_path_raw: str | None,
+    ) -> tuple[Path, Path, dict, str]:
+        config_path = self._resolve_repo_path(root, config_path_raw)
+        config_payload = self._load_yaml_dict(config_path)
+        raw_index = index_path_raw
+        if not raw_index:
+            raw_index = str(config_payload.get("frozen_index_path", "frozen_inputs/index.json"))
+        index_path = self._resolve_config_file_path(root, config_path, raw_index)
+        return config_path, index_path, config_payload, raw_index
+
+    @staticmethod
+    def _index_entry_by_version(entries: list[dict], version: str | None) -> dict | None:
+        if not version:
+            return None
+        for item in entries:
+            if isinstance(item, dict) and item.get("version") == version:
+                return item
+        return None
+
+    def _frozen_index_payload(
+        self,
+        *,
+        root: Path,
+        config_path: Path,
+        index_path: Path,
+        index_path_raw: str,
+    ) -> dict:
+        index_data = load_frozen_index(index_path)
+        prompts_versions = index_data.get("prompts_versions", [])
+        dialogues_versions = index_data.get("dialogues_versions", [])
+        active = index_data.get("active", {})
+        prompts_active = self._index_entry_by_version(prompts_versions, active.get("prompts_version"))
+        dialogues_active = self._index_entry_by_version(
+            dialogues_versions,
+            active.get("dialogues_version"),
+        )
+        return {
+            "config_path": self._relative_to_root(root, config_path, str(config_path)),
+            "index_path": self._relative_to_root(root, index_path, index_path_raw),
+            "active": active,
+            "active_entries": {
+                "prompts": prompts_active,
+                "dialogues": dialogues_active,
+            },
+            "prompts_versions": prompts_versions,
+            "dialogues_versions": dialogues_versions,
+        }
+
+    @classmethod
+    def _prepare_status_payload(cls, task_id: str, root: Path) -> dict:
+        with cls.jobs_lock:
+            job = cls.prepare_jobs.get(task_id)
+        if job is None:
+            return {"task_id": task_id, "status": "unknown"}
+        manifest_file = job.get("manifest_file")
+        manifest_relative = None
+        if isinstance(manifest_file, Path):
+            try:
+                manifest_relative = str(manifest_file.resolve().relative_to(root))
+            except ValueError:
+                manifest_relative = str(manifest_file)
+        payload = {
+            "task_id": task_id,
+            "status": job.get("status", "unknown"),
+            "prepare_id": job.get("prepare_id"),
+            "manifest_file": manifest_relative,
+            "config_path": job.get("config_path"),
+            "target_version": job.get("target_version"),
+            "started_at_utc": job.get("started_at_utc"),
+            "finished_at_utc": job.get("finished_at_utc"),
+            "error": job.get("error"),
+        }
+        return payload
+
+    @classmethod
+    def _run_prepare_job(
+        cls,
+        *,
+        root: Path,
+        task_id: str,
+        config_path: Path,
+        target_version: str | None,
+    ) -> None:
+        try:
+            config = load_config(config_path)
+            manifest = prepare_inputs(
+                config=config,
+                config_path=str(config_path),
+                target_version=target_version,
+            )
+            prepare_id = str(manifest.get("prepare_id", target_version or ""))
+            manifest_file = Path(manifest.get("prompts_candidate", "")).parent / (
+                f"prepare_manifest_{prepare_id}.json"
+            )
+            with cls.jobs_lock:
+                job = cls.prepare_jobs[task_id]
+                job["status"] = "succeeded"
+                job["prepare_id"] = prepare_id
+                job["manifest_file"] = manifest_file
+                job["finished_at_utc"] = dt.datetime.now(dt.timezone.utc).isoformat()
+                job["error"] = None
+        except Exception as exc:  # noqa: BLE001
+            with cls.jobs_lock:
+                job = cls.prepare_jobs[task_id]
+                job["status"] = "failed"
+                job["finished_at_utc"] = dt.datetime.now(dt.timezone.utc).isoformat()
+                job["error"] = str(exc)
 
     def _json_response(self, status: int, payload: dict) -> None:
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -191,6 +328,165 @@ class DevRequestHandler(SimpleHTTPRequestHandler):
             self._json_response(HTTPStatus.OK, {"ok": True})
             return
         parsed = urlparse(self.path)
+        if parsed.path == "/prepare/status":
+            query = parse_qs(parsed.query)
+            task_id = query.get("task_id", [None])[0]
+            if not task_id:
+                task_id = self.last_prepare_task_id
+            if not task_id:
+                self._json_response(HTTPStatus.OK, {"task_id": None, "status": "idle"})
+                return
+            payload = self._prepare_status_payload(str(task_id), root)
+            self._json_response(HTTPStatus.OK, payload)
+            return
+        if parsed.path == "/prepare/manifest":
+            query = parse_qs(parsed.query)
+            manifest_raw = str(query.get("manifest_file", [""])[0]).strip()
+            if not manifest_raw:
+                self._json_response(HTTPStatus.BAD_REQUEST, {"error": "manifest_file is required"})
+                return
+            try:
+                manifest_path = self._resolve_repo_path(root, manifest_raw)
+            except ValueError as exc:
+                self._json_response(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
+                return
+            if not manifest_path.exists():
+                self._json_response(HTTPStatus.NOT_FOUND, {"error": "manifest file not found"})
+                return
+            try:
+                payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+            except json.JSONDecodeError as exc:
+                self._json_response(HTTPStatus.BAD_REQUEST, {"error": f"invalid manifest json: {exc}"})
+                return
+            self._json_response(
+                HTTPStatus.OK,
+                {
+                    "manifest_file": self._relative_to_root(root, manifest_path, manifest_raw),
+                    "manifest": payload,
+                },
+            )
+            return
+        if parsed.path == "/prepare/candidate/prompts":
+            query = parse_qs(parsed.query)
+            candidate_raw = str(query.get("file", [""])[0]).strip()
+            if not candidate_raw:
+                self._json_response(HTTPStatus.BAD_REQUEST, {"error": "file is required"})
+                return
+            try:
+                candidate_path = self._resolve_repo_path(root, candidate_raw)
+            except ValueError as exc:
+                self._json_response(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
+                return
+            if not candidate_path.exists():
+                self._json_response(HTTPStatus.NOT_FOUND, {"error": "candidate file not found"})
+                return
+            try:
+                content = json.loads(candidate_path.read_text(encoding="utf-8"))
+            except json.JSONDecodeError as exc:
+                self._json_response(
+                    HTTPStatus.BAD_REQUEST,
+                    {"error": f"invalid prompts json: {exc}"},
+                )
+                return
+            self._json_response(
+                HTTPStatus.OK,
+                {
+                    "file": self._relative_to_root(root, candidate_path, candidate_raw),
+                    "content": content,
+                },
+            )
+            return
+        if parsed.path == "/prepare/candidate/dialogues":
+            query = parse_qs(parsed.query)
+            candidate_raw = str(query.get("file", [""])[0]).strip()
+            if not candidate_raw:
+                self._json_response(HTTPStatus.BAD_REQUEST, {"error": "file is required"})
+                return
+            sample_raw = str(query.get("sample", ["20"])[0]).strip()
+            try:
+                sample_size = max(1, min(100, int(sample_raw)))
+            except ValueError:
+                self._json_response(HTTPStatus.BAD_REQUEST, {"error": "sample must be an integer"})
+                return
+            try:
+                candidate_path = self._resolve_repo_path(root, candidate_raw)
+            except ValueError as exc:
+                self._json_response(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
+                return
+            if not candidate_path.exists():
+                self._json_response(HTTPStatus.NOT_FOUND, {"error": "candidate file not found"})
+                return
+
+            total = 0
+            invalid_rows = 0
+            domain_counts: dict[str, int] = {}
+            turn_count_min: int | None = None
+            turn_count_max: int | None = None
+            sample_rows: list[dict] = []
+
+            with candidate_path.open("r", encoding="utf-8") as fh:
+                for line_no, line in enumerate(fh, start=1):
+                    stripped = line.strip()
+                    if not stripped:
+                        continue
+                    total += 1
+                    try:
+                        row = json.loads(stripped)
+                    except json.JSONDecodeError:
+                        invalid_rows += 1
+                        continue
+                    domain = str(row.get("domain", ""))
+                    domain_counts[domain] = domain_counts.get(domain, 0) + 1
+                    turns = row.get("turns")
+                    turn_count = len(turns) if isinstance(turns, list) else 0
+                    if turn_count_min is None or turn_count < turn_count_min:
+                        turn_count_min = turn_count
+                    if turn_count_max is None or turn_count > turn_count_max:
+                        turn_count_max = turn_count
+                    if len(sample_rows) < sample_size:
+                        sample_rows.append(
+                            {
+                                "line": line_no,
+                                "dialogue_id": row.get("dialogue_id"),
+                                "domain": row.get("domain"),
+                                "turn_count": turn_count,
+                            }
+                        )
+
+            self._json_response(
+                HTTPStatus.OK,
+                {
+                    "file": self._relative_to_root(root, candidate_path, candidate_raw),
+                    "total": total,
+                    "invalid_rows": invalid_rows,
+                    "domain_counts": domain_counts,
+                    "turn_count_min": turn_count_min,
+                    "turn_count_max": turn_count_max,
+                    "sample_rows": sample_rows,
+                },
+            )
+            return
+        if parsed.path == "/frozen/index":
+            query = parse_qs(parsed.query)
+            config_path_raw = str(query.get("config_path", ["config.yaml"])[0])
+            index_path_raw = query.get("index_path", [None])[0]
+            try:
+                config_path, index_path, _, resolved_index_raw = self._resolve_config_and_index_paths(
+                    root,
+                    config_path_raw=config_path_raw,
+                    index_path_raw=str(index_path_raw) if index_path_raw else None,
+                )
+            except ValueError as exc:
+                self._json_response(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
+                return
+            payload = self._frozen_index_payload(
+                root=root,
+                config_path=config_path,
+                index_path=index_path,
+                index_path_raw=resolved_index_raw,
+            )
+            self._json_response(HTTPStatus.OK, payload)
+            return
         if parsed.path == "/inputs/status":
             query = parse_qs(parsed.query)
             config_path_raw = str(query.get("config_path", ["config.yaml"])[0])
@@ -294,6 +590,213 @@ class DevRequestHandler(SimpleHTTPRequestHandler):
                         "environment and restart the service."
                     ),
                     "required_env_key": self.deepseek_key_name,
+                },
+            )
+            return
+
+        if self.path == "/prepare/start":
+            try:
+                payload = self._read_json_body()
+            except json.JSONDecodeError:
+                self._json_response(HTTPStatus.BAD_REQUEST, {"error": "invalid json"})
+                return
+            root = Path(self.directory or ".").resolve()
+            config_path_raw = str(payload.get("config_path", "config.yaml"))
+            target_version_raw = payload.get("target_version")
+            target_version = str(target_version_raw).strip() if target_version_raw else None
+            try:
+                config_path = self._resolve_repo_path(root, config_path_raw)
+            except ValueError as exc:
+                self._json_response(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
+                return
+            if not config_path.exists():
+                self._json_response(
+                    HTTPStatus.BAD_REQUEST,
+                    {"error": f"Config file not found: {config_path_raw}"},
+                )
+                return
+            raw_config = self._load_yaml_dict(config_path)
+            missing_keys = self._missing_api_keys_for_roles(raw_config, ("llm1", "llm2"))
+            if missing_keys:
+                self._json_response(
+                    HTTPStatus.BAD_REQUEST,
+                    {
+                        "error": "Missing API key(s) for prepare.",
+                        "missing_api_keys": missing_keys,
+                    },
+                )
+                return
+
+            with self.jobs_lock:
+                running_task = next(
+                    (
+                        task_id
+                        for task_id, job in self.prepare_jobs.items()
+                        if job.get("status") == "running"
+                    ),
+                    None,
+                )
+                if running_task is not None:
+                    self._json_response(
+                        HTTPStatus.CONFLICT,
+                        {
+                            "error": "A prepare task is already running.",
+                            "running_task_id": running_task,
+                        },
+                    )
+                    return
+
+                task_id = f"prepare_{dt.datetime.now(dt.timezone.utc).strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}"
+                self.last_prepare_task_id = task_id
+                self.prepare_jobs[task_id] = {
+                    "status": "running",
+                    "prepare_id": target_version,
+                    "manifest_file": None,
+                    "config_path": self._relative_to_root(root, config_path, config_path_raw),
+                    "target_version": target_version,
+                    "started_at_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+                    "finished_at_utc": None,
+                    "error": None,
+                }
+
+                thread = threading.Thread(
+                    target=self._run_prepare_job,
+                    kwargs={
+                        "root": root,
+                        "task_id": task_id,
+                        "config_path": config_path,
+                        "target_version": target_version,
+                    },
+                    daemon=True,
+                )
+                self.prepare_jobs[task_id]["thread"] = thread
+                thread.start()
+
+            self._json_response(
+                HTTPStatus.ACCEPTED,
+                {
+                    "accepted": True,
+                    "task_id": task_id,
+                    "status": "running",
+                    "target_version": target_version,
+                },
+            )
+            return
+
+        if self.path in {"/frozen/approve-prompts", "/frozen/approve-dialogues"}:
+            try:
+                payload = self._read_json_body()
+            except json.JSONDecodeError:
+                self._json_response(HTTPStatus.BAD_REQUEST, {"error": "invalid json"})
+                return
+            root = Path(self.directory or ".").resolve()
+            kind = "prompts" if self.path.endswith("prompts") else "dialogues"
+            candidate_raw = str(payload.get("candidate", "")).strip()
+            version = str(payload.get("version", "")).strip()
+            reviewer = str(payload.get("reviewer", "")).strip()
+            note = payload.get("note")
+            activate = bool(payload.get("activate", False))
+            config_path_raw = str(payload.get("config_path", "config.yaml"))
+            index_path_raw = payload.get("index_path")
+            if not candidate_raw or not version or not reviewer:
+                self._json_response(
+                    HTTPStatus.BAD_REQUEST,
+                    {"error": "candidate, version, reviewer are required"},
+                )
+                return
+            try:
+                candidate_path = self._resolve_repo_path(root, candidate_raw)
+                config_path, index_path, _, resolved_index_raw = self._resolve_config_and_index_paths(
+                    root,
+                    config_path_raw=config_path_raw,
+                    index_path_raw=str(index_path_raw) if index_path_raw else None,
+                )
+            except ValueError as exc:
+                self._json_response(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
+                return
+            try:
+                entry = approve_candidate(
+                    index_path=index_path,
+                    kind=kind,  # type: ignore[arg-type]
+                    candidate_path=candidate_path,
+                    version=version,
+                    reviewer=reviewer,
+                    note=str(note) if note is not None else None,
+                )
+                if activate:
+                    if kind == "prompts":
+                        set_active_versions(index_path=index_path, prompts_version=version)
+                    else:
+                        set_active_versions(index_path=index_path, dialogues_version=version)
+            except Exception as exc:  # noqa: BLE001
+                self._json_response(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
+                return
+            payload_out = self._frozen_index_payload(
+                root=root,
+                config_path=config_path,
+                index_path=index_path,
+                index_path_raw=resolved_index_raw,
+            )
+            self._json_response(
+                HTTPStatus.OK,
+                {
+                    "ok": True,
+                    "kind": kind,
+                    "entry": entry,
+                    "activate": activate,
+                    **payload_out,
+                },
+            )
+            return
+
+        if self.path == "/frozen/use":
+            try:
+                payload = self._read_json_body()
+            except json.JSONDecodeError:
+                self._json_response(HTTPStatus.BAD_REQUEST, {"error": "invalid json"})
+                return
+            root = Path(self.directory or ".").resolve()
+            config_path_raw = str(payload.get("config_path", "config.yaml"))
+            index_path_raw = payload.get("index_path")
+            prompts_version = str(payload.get("prompts_version", "")).strip()
+            dialogues_version = str(payload.get("dialogues_version", "")).strip()
+            if not prompts_version or not dialogues_version:
+                self._json_response(
+                    HTTPStatus.BAD_REQUEST,
+                    {"error": "prompts_version and dialogues_version are required"},
+                )
+                return
+            try:
+                config_path, index_path, _, resolved_index_raw = self._resolve_config_and_index_paths(
+                    root,
+                    config_path_raw=config_path_raw,
+                    index_path_raw=str(index_path_raw) if index_path_raw else None,
+                )
+            except ValueError as exc:
+                self._json_response(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
+                return
+            try:
+                updated = apply_versions_to_config(
+                    config_path=config_path,
+                    index_path=index_path,
+                    prompts_version=prompts_version,
+                    dialogues_version=dialogues_version,
+                )
+            except Exception as exc:  # noqa: BLE001
+                self._json_response(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
+                return
+            payload_out = self._frozen_index_payload(
+                root=root,
+                config_path=config_path,
+                index_path=index_path,
+                index_path_raw=resolved_index_raw,
+            )
+            self._json_response(
+                HTTPStatus.OK,
+                {
+                    "ok": True,
+                    "updated": updated,
+                    **payload_out,
                 },
             )
             return

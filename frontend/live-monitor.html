@@ -166,6 +166,13 @@
         >
           Results
         </a>
+        <a
+          id="monitor-open-prep"
+          class="flex items-center justify-center rounded-md h-8 px-3 bg-background-dark text-slate-300 border border-surface-border hover:bg-surface-border transition-colors text-xs font-bold uppercase tracking-wider"
+          href="/frontend/data-preparation.html"
+        >
+          Data Prep
+        </a>
         <button
           id="monitor-refresh-btn"
           class="flex items-center justify-center rounded-md h-8 px-3 bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors text-xs font-bold uppercase tracking-wider"
@@ -382,6 +389,7 @@
         const modelLabelEl = document.getElementById("monitor-model-label");
         const setupLink = document.getElementById("monitor-open-setup");
         const resultsLink = document.getElementById("monitor-open-results");
+        const prepLink = document.getElementById("monitor-open-prep");
         const settingsLink = document.getElementById("monitor-open-settings");
         const connectionEl = document.getElementById("monitor-connection");
         const refreshLatencyEl = document.getElementById("monitor-refresh-latency");
@@ -418,6 +426,7 @@
         function syncLinks(runId) {
           if (setupLink) setupLink.href = withRunId("/frontend/experiment-setup.html", runId);
           if (resultsLink) resultsLink.href = withRunId("/frontend/results-analysis.html", runId);
+          if (prepLink) prepLink.href = withRunId("/frontend/data-preparation.html", runId);
           if (settingsLink) settingsLink.href = withRunId("/frontend/settings-api.html", runId);
         }
 

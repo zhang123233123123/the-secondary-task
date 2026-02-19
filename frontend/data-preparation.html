@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Data Preparation - StyleDrift Lab</title>
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              primary: "#3c83f6",
+              "background-dark": "#101723",
+              "card-dark": "#182334",
+              "border-dark": "#314668",
+              "text-subtle": "#90a7cb",
+            },
+            fontFamily: {
+              display: ["Inter", "sans-serif"],
+              mono: ["Roboto Mono", "monospace"],
+            },
+          },
+        },
+      };
+    </script>
+  </head>
+  <body
+    class="bg-background-dark font-display text-white min-h-screen flex flex-col antialiased selection:bg-primary selection:text-white"
+  >
+    <header class="border-b border-border-dark bg-background-dark/70 backdrop-blur-md sticky top-0 z-40">
+      <div class="px-6 py-4 max-w-7xl mx-auto w-full flex items-center justify-between gap-4">
+        <div class="flex items-center gap-2 text-sm">
+          <a
+            id="prep-open-setup"
+            class="text-text-subtle hover:text-primary transition-colors flex items-center gap-1"
+            href="/frontend/experiment-setup.html"
+          >
+            <span class="material-symbols-outlined text-[18px]">settings</span>
+            Setup
+          </a>
+          <span class="text-border-dark">/</span>
+          <span class="text-white font-medium">Data Preparation</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <a
+            id="prep-open-monitor"
+            class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white transition-colors text-xs"
+            href="/frontend/live-monitor.html"
+            >Monitor</a
+          >
+          <a
+            id="prep-open-results"
+            class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white transition-colors text-xs"
+            href="/frontend/results-analysis.html"
+            >Results</a
+          >
+          <a
+            id="prep-open-settings"
+            class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white transition-colors text-xs"
+            href="/frontend/settings-api.html"
+            >API Key</a
+          >
+        </div>
+      </div>
+    </header>
+
+    <main class="max-w-7xl w-full mx-auto px-6 py-8 flex flex-col gap-6">
+      <section class="rounded-2xl border border-border-dark bg-card-dark p-6 flex flex-col gap-4">
+        <div class="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <h1 class="text-2xl font-bold">Offline Data Preparation Workspace</h1>
+            <p class="text-text-subtle text-sm mt-1">
+              Run LLM1/LLM2 prepare pipeline, review candidates, approve to frozen versions, and activate in
+              <span class="font-mono">config.yaml</span>.
+            </p>
+          </div>
+          <div class="text-xs text-text-subtle font-mono">
+            task:
+            <span id="prep-current-task" class="text-white">idle</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+          <label class="flex flex-col gap-1 md:col-span-2">
+            <span class="text-xs text-text-subtle">Config Path</span>
+            <input
+              id="prep-config-path"
+              class="bg-background-dark border border-border-dark rounded px-3 py-2 text-sm font-mono"
+              value="config.yaml"
+            />
+          </label>
+          <label class="flex flex-col gap-1 md:col-span-2">
+            <span class="text-xs text-text-subtle">Target Version (Optional)</span>
+            <input
+              id="prep-target-version"
+              class="bg-background-dark border border-border-dark rounded px-3 py-2 text-sm font-mono"
+              placeholder="e.g. prep_20260219_xxxxxx"
+            />
+          </label>
+          <button
+            id="prep-start-btn"
+            class="h-[38px] rounded bg-primary hover:bg-blue-600 text-white font-semibold text-sm"
+          >
+            Start Prepare
+          </button>
+        </div>
+        <div id="prep-status-msg" class="text-sm text-text-subtle">
+          Ready.
+        </div>
+      </section>
+
+      <section class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div class="rounded-2xl border border-border-dark bg-card-dark p-6 flex flex-col gap-3">
+          <h2 class="font-semibold">Prepare Manifest</h2>
+          <div class="text-xs text-text-subtle">
+            manifest:
+            <span id="prep-manifest-file" class="font-mono text-white">-</span>
+          </div>
+          <div class="text-xs text-text-subtle">
+            prepare_id:
+            <span id="prep-prepare-id" class="font-mono text-white">-</span>
+          </div>
+          <div class="text-xs text-text-subtle">
+            prompts candidate:
+            <span id="prep-prompts-candidate" class="font-mono text-white">-</span>
+          </div>
+          <div class="text-xs text-text-subtle">
+            dialogues candidate:
+            <span id="prep-dialogues-candidate" class="font-mono text-white">-</span>
+          </div>
+          <pre
+            id="prep-manifest-json"
+            class="bg-background-dark border border-border-dark rounded p-3 text-xs font-mono text-text-subtle overflow-auto max-h-[260px]"
+          >No manifest loaded.</pre>
+        </div>
+
+        <div class="rounded-2xl border border-border-dark bg-card-dark p-6 flex flex-col gap-4">
+          <h2 class="font-semibold">Frozen Index</h2>
+          <div class="grid grid-cols-2 gap-3 text-xs">
+            <div class="bg-background-dark border border-border-dark rounded p-3">
+              <div class="text-text-subtle">Active Prompts</div>
+              <div id="prep-active-prompts" class="font-mono mt-1">-</div>
+            </div>
+            <div class="bg-background-dark border border-border-dark rounded p-3">
+              <div class="text-text-subtle">Active Dialogues</div>
+              <div id="prep-active-dialogues" class="font-mono mt-1">-</div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-text-subtle">Prompts Version</span>
+              <select id="prep-activate-prompts" class="bg-background-dark border border-border-dark rounded px-3 py-2 text-sm"></select>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-text-subtle">Dialogues Version</span>
+              <select id="prep-activate-dialogues" class="bg-background-dark border border-border-dark rounded px-3 py-2 text-sm"></select>
+            </label>
+          </div>
+          <button
+            id="prep-activate-btn"
+            class="rounded border border-border-dark bg-background-dark hover:bg-slate-800 px-3 py-2 text-sm font-semibold"
+          >
+            Activate (use-frozen)
+          </button>
+        </div>
+      </section>
+
+      <section class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div class="rounded-2xl border border-border-dark bg-card-dark p-6 flex flex-col gap-3">
+          <div class="flex items-center justify-between">
+            <h2 class="font-semibold">Prompts Candidate (Read-only)</h2>
+            <span id="prep-prompts-preview-file" class="text-xs font-mono text-text-subtle">-</span>
+          </div>
+          <pre
+            id="prep-prompts-preview"
+            class="bg-background-dark border border-border-dark rounded p-3 text-xs font-mono text-text-subtle overflow-auto max-h-[320px]"
+          >No prompts candidate loaded.</pre>
+        </div>
+
+        <div class="rounded-2xl border border-border-dark bg-card-dark p-6 flex flex-col gap-3">
+          <div class="flex items-center justify-between">
+            <h2 class="font-semibold">Dialogues Candidate Stats</h2>
+            <span id="prep-dialogues-preview-file" class="text-xs font-mono text-text-subtle">-</span>
+          </div>
+          <div class="grid grid-cols-2 gap-3 text-xs">
+            <div class="bg-background-dark border border-border-dark rounded p-3">
+              <div class="text-text-subtle">Total</div>
+              <div id="prep-dialogues-total" class="font-mono mt-1">-</div>
+            </div>
+            <div class="bg-background-dark border border-border-dark rounded p-3">
+              <div class="text-text-subtle">Invalid Rows</div>
+              <div id="prep-dialogues-invalid" class="font-mono mt-1">-</div>
+            </div>
+            <div class="bg-background-dark border border-border-dark rounded p-3 col-span-2">
+              <div class="text-text-subtle">Domain Counts</div>
+              <div id="prep-dialogues-domain" class="font-mono mt-1 break-all">-</div>
+            </div>
+          </div>
+          <pre
+            id="prep-dialogues-sample"
+            class="bg-background-dark border border-border-dark rounded p-3 text-xs font-mono text-text-subtle overflow-auto max-h-[170px]"
+          >No sample loaded.</pre>
+        </div>
+      </section>
+
+      <section class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div class="rounded-2xl border border-border-dark bg-card-dark p-6 flex flex-col gap-3">
+          <h3 class="font-semibold">Approve Prompts</h3>
+          <label class="text-xs text-text-subtle">Version</label>
+          <input id="prep-approve-prompts-version" class="bg-background-dark border border-border-dark rounded px-3 py-2 text-sm font-mono" />
+          <label class="text-xs text-text-subtle">Reviewer</label>
+          <input id="prep-approve-prompts-reviewer" class="bg-background-dark border border-border-dark rounded px-3 py-2 text-sm" />
+          <label class="text-xs text-text-subtle">Note</label>
+          <input id="prep-approve-prompts-note" class="bg-background-dark border border-border-dark rounded px-3 py-2 text-sm" />
+          <label class="inline-flex items-center gap-2 text-xs text-text-subtle">
+            <input id="prep-approve-prompts-activate" type="checkbox" class="rounded border-border-dark bg-background-dark" />
+            Activate after approve
+          </label>
+          <button id="prep-approve-prompts-btn" class="rounded bg-primary hover:bg-blue-600 px-3 py-2 text-sm font-semibold">
+            Approve Prompts
+          </button>
+        </div>
+
+        <div class="rounded-2xl border border-border-dark bg-card-dark p-6 flex flex-col gap-3">
+          <h3 class="font-semibold">Approve Dialogues</h3>
+          <label class="text-xs text-text-subtle">Version</label>
+          <input id="prep-approve-dialogues-version" class="bg-background-dark border border-border-dark rounded px-3 py-2 text-sm font-mono" />
+          <label class="text-xs text-text-subtle">Reviewer</label>
+          <input id="prep-approve-dialogues-reviewer" class="bg-background-dark border border-border-dark rounded px-3 py-2 text-sm" />
+          <label class="text-xs text-text-subtle">Note</label>
+          <input id="prep-approve-dialogues-note" class="bg-background-dark border border-border-dark rounded px-3 py-2 text-sm" />
+          <label class="inline-flex items-center gap-2 text-xs text-text-subtle">
+            <input id="prep-approve-dialogues-activate" type="checkbox" class="rounded border-border-dark bg-background-dark" />
+            Activate after approve
+          </label>
+          <button id="prep-approve-dialogues-btn" class="rounded bg-primary hover:bg-blue-600 px-3 py-2 text-sm font-semibold">
+            Approve Dialogues
+          </button>
+        </div>
+      </section>
+
+      <section class="rounded-2xl border border-border-dark bg-card-dark p-6">
+        <h3 class="font-semibold mb-3">Operation Log</h3>
+        <pre
+          id="prep-op-log"
+          class="bg-background-dark border border-border-dark rounded p-3 text-xs font-mono text-text-subtle overflow-auto max-h-[220px]"
+        ></pre>
+      </section>
+    </main>
+
+    <script>
+      (function () {
+        const DEFAULT_CONFIG_PATH = "config.yaml";
+        const params = new URLSearchParams(window.location.search);
+        const runId = params.get("run_id");
+        const configPathFromQuery = params.get("config_path");
+        const state = {
+          taskId: null,
+          manifest: null,
+          frozenIndex: null,
+          statusTimer: null,
+        };
+
+        const el = {
+          setupLink: document.getElementById("prep-open-setup"),
+          monitorLink: document.getElementById("prep-open-monitor"),
+          resultsLink: document.getElementById("prep-open-results"),
+          settingsLink: document.getElementById("prep-open-settings"),
+          configPath: document.getElementById("prep-config-path"),
+          targetVersion: document.getElementById("prep-target-version"),
+          startBtn: document.getElementById("prep-start-btn"),
+          statusMsg: document.getElementById("prep-status-msg"),
+          task: document.getElementById("prep-current-task"),
+          manifestFile: document.getElementById("prep-manifest-file"),
+          prepareId: document.getElementById("prep-prepare-id"),
+          promptsCandidate: document.getElementById("prep-prompts-candidate"),
+          dialoguesCandidate: document.getElementById("prep-dialogues-candidate"),
+          manifestJson: document.getElementById("prep-manifest-json"),
+          promptsPreviewFile: document.getElementById("prep-prompts-preview-file"),
+          promptsPreview: document.getElementById("prep-prompts-preview"),
+          dialoguesPreviewFile: document.getElementById("prep-dialogues-preview-file"),
+          dialoguesTotal: document.getElementById("prep-dialogues-total"),
+          dialoguesInvalid: document.getElementById("prep-dialogues-invalid"),
+          dialoguesDomain: document.getElementById("prep-dialogues-domain"),
+          dialoguesSample: document.getElementById("prep-dialogues-sample"),
+          activePrompts: document.getElementById("prep-active-prompts"),
+          activeDialogues: document.getElementById("prep-active-dialogues"),
+          activatePrompts: document.getElementById("prep-activate-prompts"),
+          activateDialogues: document.getElementById("prep-activate-dialogues"),
+          activateBtn: document.getElementById("prep-activate-btn"),
+          approvePromptsVersion: document.getElementById("prep-approve-prompts-version"),
+          approvePromptsReviewer: document.getElementById("prep-approve-prompts-reviewer"),
+          approvePromptsNote: document.getElementById("prep-approve-prompts-note"),
+          approvePromptsActivate: document.getElementById("prep-approve-prompts-activate"),
+          approvePromptsBtn: document.getElementById("prep-approve-prompts-btn"),
+          approveDialoguesVersion: document.getElementById("prep-approve-dialogues-version"),
+          approveDialoguesReviewer: document.getElementById("prep-approve-dialogues-reviewer"),
+          approveDialoguesNote: document.getElementById("prep-approve-dialogues-note"),
+          approveDialoguesActivate: document.getElementById("prep-approve-dialogues-activate"),
+          approveDialoguesBtn: document.getElementById("prep-approve-dialogues-btn"),
+          opLog: document.getElementById("prep-op-log"),
+        };
+
+        function withContext(path) {
+          const q = new URLSearchParams();
+          if (runId) q.set("run_id", runId);
+          const configPath = (el.configPath?.value || "").trim();
+          if (configPath) q.set("config_path", configPath);
+          const query = q.toString();
+          return query ? path + "?" + query : path;
+        }
+
+        function syncLinks() {
+          if (el.setupLink) el.setupLink.href = withContext("/frontend/experiment-setup.html");
+          if (el.monitorLink) el.monitorLink.href = withContext("/frontend/live-monitor.html");
+          if (el.resultsLink) el.resultsLink.href = withContext("/frontend/results-analysis.html");
+          if (el.settingsLink) el.settingsLink.href = withContext("/frontend/settings-api.html");
+        }
+
+        function log(message) {
+          if (!el.opLog) return;
+          const ts = new Date().toLocaleTimeString([], { hour12: false });
+          el.opLog.textContent += `[${ts}] ${message}\n`;
+          el.opLog.scrollTop = el.opLog.scrollHeight;
+        }
+
+        function setStatus(message) {
+          if (el.statusMsg) el.statusMsg.textContent = message;
+          log(message);
+        }
+
+        async function fetchJson(url, options) {
+          const response = await fetch(url, options);
+          const payload = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            throw new Error(payload.error || `HTTP ${response.status}`);
+          }
+          return payload;
+        }
+
+        function renderManifest(manifestFile, manifest) {
+          state.manifest = manifest || null;
+          if (el.manifestFile) el.manifestFile.textContent = manifestFile || "-";
+          if (el.prepareId) el.prepareId.textContent = manifest?.prepare_id || "-";
+          if (el.promptsCandidate) el.promptsCandidate.textContent = manifest?.prompts_candidate || "-";
+          if (el.dialoguesCandidate) el.dialoguesCandidate.textContent = manifest?.dialogues_candidate || "-";
+          if (el.manifestJson) {
+            el.manifestJson.textContent = manifest ? JSON.stringify(manifest, null, 2) : "No manifest loaded.";
+          }
+        }
+
+        function renderFrozenIndex(data) {
+          state.frozenIndex = data;
+          if (el.activePrompts) el.activePrompts.textContent = data?.active?.prompts_version || "-";
+          if (el.activeDialogues) el.activeDialogues.textContent = data?.active?.dialogues_version || "-";
+          if (el.activatePrompts) {
+            const active = data?.active?.prompts_version || "";
+            el.activatePrompts.innerHTML =
+              '<option value="">Select prompts version</option>' +
+              (data?.prompts_versions || [])
+                .map(function (item) {
+                  const v = String(item.version || "");
+                  const selected = v === active ? " selected" : "";
+                  return `<option value="${v}"${selected}>${v}</option>`;
+                })
+                .join("");
+          }
+          if (el.activateDialogues) {
+            const active = data?.active?.dialogues_version || "";
+            el.activateDialogues.innerHTML =
+              '<option value="">Select dialogues version</option>' +
+              (data?.dialogues_versions || [])
+                .map(function (item) {
+                  const v = String(item.version || "");
+                  const selected = v === active ? " selected" : "";
+                  return `<option value="${v}"${selected}>${v}</option>`;
+                })
+                .join("");
+          }
+        }
+
+        async function refreshFrozenIndex() {
+          const configPath = (el.configPath?.value || DEFAULT_CONFIG_PATH).trim() || DEFAULT_CONFIG_PATH;
+          const payload = await fetchJson(
+            "/frozen/index?config_path=" + encodeURIComponent(configPath),
+          );
+          renderFrozenIndex(payload);
+        }
+
+        async function refreshPromptsPreview(file) {
+          if (!file) return;
+          const payload = await fetchJson(
+            "/prepare/candidate/prompts?file=" + encodeURIComponent(file),
+          );
+          if (el.promptsPreviewFile) el.promptsPreviewFile.textContent = payload.file || "-";
+          if (el.promptsPreview) el.promptsPreview.textContent = JSON.stringify(payload.content, null, 2);
+        }
+
+        async function refreshDialoguesPreview(file) {
+          if (!file) return;
+          const payload = await fetchJson(
+            "/prepare/candidate/dialogues?sample=20&file=" + encodeURIComponent(file),
+          );
+          if (el.dialoguesPreviewFile) el.dialoguesPreviewFile.textContent = payload.file || "-";
+          if (el.dialoguesTotal) el.dialoguesTotal.textContent = String(payload.total ?? "-");
+          if (el.dialoguesInvalid) el.dialoguesInvalid.textContent = String(payload.invalid_rows ?? "-");
+          if (el.dialoguesDomain) el.dialoguesDomain.textContent = JSON.stringify(payload.domain_counts || {});
+          if (el.dialoguesSample) {
+            el.dialoguesSample.textContent = JSON.stringify(payload.sample_rows || [], null, 2);
+          }
+        }
+
+        async function refreshManifestByFile(manifestFile) {
+          if (!manifestFile) return;
+          const payload = await fetchJson(
+            "/prepare/manifest?manifest_file=" + encodeURIComponent(manifestFile),
+          );
+          renderManifest(payload.manifest_file, payload.manifest);
+          await refreshPromptsPreview(payload.manifest?.prompts_candidate);
+          await refreshDialoguesPreview(payload.manifest?.dialogues_candidate);
+        }
+
+        async function refreshPrepareStatus() {
+          const query = state.taskId ? "?task_id=" + encodeURIComponent(state.taskId) : "";
+          const payload = await fetchJson("/prepare/status" + query);
+          state.taskId = payload.task_id || state.taskId;
+          if (el.task) el.task.textContent = payload.task_id ? `${payload.task_id} (${payload.status})` : payload.status;
+          if (payload.status === "succeeded" && payload.manifest_file) {
+            await refreshManifestByFile(payload.manifest_file);
+          }
+          if (payload.status === "failed") {
+            setStatus("Prepare failed: " + String(payload.error || "unknown"));
+          }
+          return payload;
+        }
+
+        async function startPrepare() {
+          const configPath = (el.configPath?.value || DEFAULT_CONFIG_PATH).trim() || DEFAULT_CONFIG_PATH;
+          const targetVersion = (el.targetVersion?.value || "").trim();
+          el.startBtn.disabled = true;
+          el.startBtn.classList.add("opacity-60", "cursor-not-allowed");
+          try {
+            syncLinks();
+            const payload = await fetchJson("/prepare/start", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                config_path: configPath,
+                target_version: targetVersion || undefined,
+              }),
+            });
+            state.taskId = payload.task_id;
+            setStatus(`Prepare started: ${payload.task_id}`);
+            if (el.task) el.task.textContent = `${payload.task_id} (running)`;
+            if (state.statusTimer) window.clearInterval(state.statusTimer);
+            state.statusTimer = window.setInterval(async function () {
+              try {
+                const latest = await refreshPrepareStatus();
+                if (latest.status !== "running") {
+                  window.clearInterval(state.statusTimer);
+                  state.statusTimer = null;
+                }
+              } catch (_) {}
+            }, 2000);
+          } catch (error) {
+            setStatus("Start prepare failed: " + String(error.message || error));
+          } finally {
+            el.startBtn.disabled = false;
+            el.startBtn.classList.remove("opacity-60", "cursor-not-allowed");
+          }
+        }
+
+        async function approve(kind) {
+          if (!state.manifest) throw new Error("No manifest loaded");
+          const isPrompts = kind === "prompts";
+          const version = (
+            isPrompts
+              ? el.approvePromptsVersion?.value
+              : el.approveDialoguesVersion?.value
+          )?.trim();
+          const reviewer = (
+            isPrompts
+              ? el.approvePromptsReviewer?.value
+              : el.approveDialoguesReviewer?.value
+          )?.trim();
+          const note = isPrompts ? el.approvePromptsNote?.value : el.approveDialoguesNote?.value;
+          const activate = isPrompts
+            ? !!el.approvePromptsActivate?.checked
+            : !!el.approveDialoguesActivate?.checked;
+          if (!version || !reviewer) {
+            throw new Error("version and reviewer are required");
+          }
+          const candidate = isPrompts
+            ? state.manifest.prompts_candidate
+            : state.manifest.dialogues_candidate;
+          const endpoint = isPrompts ? "/frozen/approve-prompts" : "/frozen/approve-dialogues";
+          const configPath = (el.configPath?.value || DEFAULT_CONFIG_PATH).trim() || DEFAULT_CONFIG_PATH;
+          const payload = await fetchJson(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              config_path: configPath,
+              candidate: candidate,
+              version: version,
+              reviewer: reviewer,
+              note: note || "",
+              activate: activate,
+            }),
+          });
+          renderFrozenIndex(payload);
+          setStatus(`${kind} approved: ${version}${activate ? " (activated)" : ""}`);
+        }
+
+        async function activateFrozen() {
+          const promptsVersion = (el.activatePrompts?.value || "").trim();
+          const dialoguesVersion = (el.activateDialogues?.value || "").trim();
+          if (!promptsVersion || !dialoguesVersion) {
+            throw new Error("select both prompts and dialogues versions");
+          }
+          const configPath = (el.configPath?.value || DEFAULT_CONFIG_PATH).trim() || DEFAULT_CONFIG_PATH;
+          const payload = await fetchJson("/frozen/use", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              config_path: configPath,
+              prompts_version: promptsVersion,
+              dialogues_version: dialoguesVersion,
+            }),
+          });
+          renderFrozenIndex(payload);
+          setStatus(`Activated prompts=${promptsVersion}, dialogues=${dialoguesVersion}`);
+        }
+
+        if (el.configPath && configPathFromQuery) el.configPath.value = configPathFromQuery;
+        syncLinks();
+
+        if (el.startBtn) {
+          el.startBtn.addEventListener("click", startPrepare);
+        }
+        if (el.configPath) {
+          el.configPath.addEventListener("change", function () {
+            syncLinks();
+            refreshFrozenIndex().catch(function (error) {
+              setStatus("Failed to refresh frozen index: " + String(error.message || error));
+            });
+          });
+        }
+        if (el.approvePromptsBtn) {
+          el.approvePromptsBtn.addEventListener("click", async function () {
+            try {
+              await approve("prompts");
+            } catch (error) {
+              setStatus("Approve prompts failed: " + String(error.message || error));
+            }
+          });
+        }
+        if (el.approveDialoguesBtn) {
+          el.approveDialoguesBtn.addEventListener("click", async function () {
+            try {
+              await approve("dialogues");
+            } catch (error) {
+              setStatus("Approve dialogues failed: " + String(error.message || error));
+            }
+          });
+        }
+        if (el.activateBtn) {
+          el.activateBtn.addEventListener("click", async function () {
+            try {
+              await activateFrozen();
+            } catch (error) {
+              setStatus("Activate failed: " + String(error.message || error));
+            }
+          });
+        }
+
+        refreshFrozenIndex().catch(function (error) {
+          setStatus("Failed to load frozen index: " + String(error.message || error));
+        });
+        refreshPrepareStatus().catch(function (_) {});
+      })();
+    </script>
+  </body>
+</html>
