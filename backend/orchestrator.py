@@ -4,8 +4,10 @@ import datetime as dt
 import time
 import uuid
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
+from .frozen_registry import find_approved_version_for_file
 from .input_loader import Dialogue, PromptsBundle, compute_sha256, load_dialogues, load_prompts
 from .llm_clients import (
     LLMError,
@@ -109,19 +111,54 @@ def run_experiment(
     run_id: str | None = None,
 ) -> dict[str, Any]:
     actual_run_id = run_id or _build_run_id()
+    config_file = Path(config_path).resolve()
+    config_dir = config_file.parent
+    prompts_file = Path(config.prompts_path)
+    dialogues_file = Path(config.dialogues_path)
+    index_file = Path(config.frozen_index_path)
+    if not prompts_file.is_absolute():
+        prompts_file = (config_dir / prompts_file).resolve()
+    if not dialogues_file.is_absolute():
+        dialogues_file = (config_dir / dialogues_file).resolve()
+    if not index_file.is_absolute():
+        index_file = (config_dir / index_file).resolve()
+
+    prompts_version = find_approved_version_for_file(
+        index_path=index_file,
+        kind="prompts",
+        file_path=prompts_file,
+    )
+    dialogues_version = find_approved_version_for_file(
+        index_path=index_file,
+        kind="dialogues",
+        file_path=dialogues_file,
+    )
+    if config.require_approved_prompts and prompts_version is None:
+        raise RuntimeError(
+            f"prompts_path is not an approved frozen version: {prompts_file}. "
+            "Run prepare + approve-prompts + use-frozen first."
+        )
+    if config.require_approved_dialogues and dialogues_version is None:
+        raise RuntimeError(
+            f"dialogues_path is not an approved frozen version: {dialogues_file}. "
+            "Run prepare + approve-dialogues + use-frozen first."
+        )
+    prompts_source = "frozen" if prompts_version is not None else "manual"
+    dialogues_source = "frozen" if dialogues_version is not None else "manual"
+    approval_enforced = config.require_approved_prompts or config.require_approved_dialogues
 
     dialogues: list[Dialogue] = load_dialogues(
-        config.dialogues_path,
+        dialogues_file,
         compatibility_mode=config.input_compatibility_mode,
     )
-    prompts = load_prompts(config.prompts_path)
+    prompts = load_prompts(prompts_file)
     if dry_run:
         dialogues = dialogues[:5]
 
     hashes = {
-        "prompts_hash": compute_sha256(config.prompts_path),
-        "config_hash": compute_sha256(config_path),
-        "dialogues_hash": compute_sha256(config.dialogues_path),
+        "prompts_hash": compute_sha256(prompts_file),
+        "config_hash": compute_sha256(config_file),
+        "dialogues_hash": compute_sha256(dialogues_file),
     }
     stats = RunStats()
 
@@ -245,6 +282,8 @@ def run_experiment(
                         },
                         "resume_strategy": config.resume_strategy,
                         "input_schema_variant": dialogue.input_schema_variant,
+                        "prompts_version": prompts_version,
+                        "dialogues_version": dialogues_version,
                         "judge_raw": judge_raw,
                         **hashes,
                     }
@@ -292,6 +331,12 @@ def run_experiment(
         "truncated_count": final_resume_state.truncated_count,
         "refusal_count": final_resume_state.refusal_count,
         "refusal_rate": (final_resume_state.refusal_count / total_rows) if total_rows else 0.0,
+        "prompts_version": prompts_version,
+        "dialogues_version": dialogues_version,
+        "prompts_source": prompts_source,
+        "dialogues_source": dialogues_source,
+        "approval_enforced": approval_enforced,
+        "frozen_index_path": str(index_file),
         "aborted": abort_reason is not None,
         "abort_reason": abort_reason,
         **hashes,

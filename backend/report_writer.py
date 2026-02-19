@@ -72,6 +72,14 @@ def write_report(
         f"- config_hash: `{summary.get('config_hash')}`",
         f"- dialogues_hash: `{summary.get('dialogues_hash')}`",
         "",
+        "## Input Freeze Provenance",
+        f"- approval_enforced: `{summary.get('approval_enforced')}`",
+        f"- frozen_index_path: `{summary.get('frozen_index_path')}`",
+        f"- prompts_source: `{summary.get('prompts_source')}`",
+        f"- prompts_version: `{summary.get('prompts_version')}`",
+        f"- dialogues_source: `{summary.get('dialogues_source')}`",
+        f"- dialogues_version: `{summary.get('dialogues_version')}`",
+        "",
         "## Recent Rows (tail=5)",
     ]
 

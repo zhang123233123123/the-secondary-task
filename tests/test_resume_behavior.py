@@ -37,6 +37,8 @@ def _write_minimal_inputs(tmp_path, resume_strategy: str) -> Path:
                 "abort_on_error: false",
                 "input_compatibility_mode: false",
                 "max_history_messages: 20",
+                "require_approved_prompts: false",
+                "require_approved_dialogues: false",
                 "llm3:",
                 "  provider: deepseek",
                 "  model: deepseek-chat",

@@ -31,6 +31,12 @@ def test_write_report_creates_markdown_summary(tmp_path):
         "generate_errors": 1,
         "judge_errors": 0,
         "judge_parse_errors": 0,
+        "approval_enforced": True,
+        "frozen_index_path": "frozen_inputs/index.json",
+        "prompts_source": "frozen",
+        "prompts_version": "p1",
+        "dialogues_source": "frozen",
+        "dialogues_version": "d1",
         "prompts_hash": "p",
         "config_hash": "c",
         "dialogues_hash": "d",
@@ -54,4 +60,7 @@ def test_write_report_creates_markdown_summary(tmp_path):
     assert "refusal_rate: `0.0`" in report
     assert "## Validation Evidence" in report
     assert "this_run_mode: `dry_run`" in report
+    assert "## Input Freeze Provenance" in report
+    assert "prompts_version: `p1`" in report
+    assert "dialogues_version: `d1`" in report
     assert "D1 / evil / turn=1 / error=generate" in report
