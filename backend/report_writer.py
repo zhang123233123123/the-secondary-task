@@ -58,8 +58,9 @@ def write_report(
         f"- judge_parse_errors: `{summary.get('judge_parse_errors')}`",
         "",
         "## Validation Evidence",
-        "- smoke_test_command: `python control_agent.py --config config.yaml --dry_run`",
+        "- smoke_test_command: `python control_agent.py run --config config.yaml --dry_run`",
         f"- this_run_mode: `{'dry_run' if dry_run else 'full_run'}`",
+        f"- validation_log_file: `{summary.get('validation_log_file')}`",
         (
             "- summary_snapshot: "
             + f"actual_rows={summary.get('actual_rows')}, "

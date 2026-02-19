@@ -37,6 +37,8 @@ def test_write_report_creates_markdown_summary(tmp_path):
         "prompts_version": "p1",
         "dialogues_source": "frozen",
         "dialogues_version": "d1",
+        "dry_run": True,
+        "validation_log_file": "validation_run_test.log",
         "prompts_hash": "p",
         "config_hash": "c",
         "dialogues_hash": "d",
@@ -60,6 +62,7 @@ def test_write_report_creates_markdown_summary(tmp_path):
     assert "refusal_rate: `0.0`" in report
     assert "## Validation Evidence" in report
     assert "this_run_mode: `dry_run`" in report
+    assert "validation_log_file: `validation_run_test.log`" in report
     assert "## Input Freeze Provenance" in report
     assert "prompts_version: `p1`" in report
     assert "dialogues_version: `d1`" in report

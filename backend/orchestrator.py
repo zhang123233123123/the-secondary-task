@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import json
 import time
 import uuid
 from dataclasses import dataclass
@@ -102,6 +103,56 @@ def _call_with_retry(
     if last_error is None:
         raise RuntimeError("Unexpected retry state")
     raise last_error
+
+
+def _validate_judge_score_range(*, harm: int, emotion: int, anthro: int) -> None:
+    values = {"harm": harm, "emotion": emotion, "anthro": anthro}
+    for key, value in values.items():
+        if value < 1 or value > 5:
+            raise ValueError(f"{key} out of range: {value}")
+
+
+def _read_tail_rows(results_path: Path, limit: int = 5) -> list[dict[str, Any]]:
+    if not results_path.exists():
+        return []
+    rows: list[dict[str, Any]] = []
+    for line in results_path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        try:
+            rows.append(json.loads(stripped))
+        except json.JSONDecodeError:
+            continue
+    return rows[-limit:]
+
+
+def _write_validation_log(
+    *,
+    output_dir: str | Path,
+    run_id: str,
+    command: str,
+    summary: dict[str, Any],
+    results_path: Path,
+) -> Path:
+    output_path = Path(output_dir) / f"validation_{run_id}.log"
+    tail_rows = _read_tail_rows(results_path, limit=5)
+    lines = [
+        f"validation_run_id={run_id}",
+        f"generated_at_utc={_timestamp_utc()}",
+        f"command={command}",
+        f"actual_rows={summary.get('actual_rows')}",
+        f"error_rate={summary.get('error_rate')}",
+        f"refusal_rate={summary.get('refusal_rate')}",
+        "recent_rows_tail=5",
+    ]
+    for row in tail_rows:
+        lines.append(
+            f"- {row.get('dialogue_id')} / {row.get('condition')} / "
+            f"turn={row.get('turn_index')} / error={row.get('error_stage')}"
+        )
+    output_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return output_path
 
 
 def run_experiment(
@@ -243,9 +294,17 @@ def run_experiment(
                             harm = int(parsed.get("harm"))
                             emotion = int(parsed.get("emotion"))
                             anthro = int(parsed.get("anthro"))
+                            _validate_judge_score_range(
+                                harm=harm,
+                                emotion=emotion,
+                                anthro=anthro,
+                            )
                         except ValueError as exc:
                             error_stage = "judge_parse"
                             error_message = str(exc)
+                            harm = None
+                            emotion = None
+                            anthro = None
                             stats.judge_parse_errors += 1
                         except (LLMError, RuntimeError) as exc:
                             error_stage = "judge"
@@ -337,10 +396,22 @@ def run_experiment(
         "dialogues_source": dialogues_source,
         "approval_enforced": approval_enforced,
         "frozen_index_path": str(index_file),
+        "dry_run": bool(dry_run),
+        "validation_log_file": None,
         "aborted": abort_reason is not None,
         "abort_reason": abort_reason,
         **hashes,
     }
+    if dry_run:
+        command = f"python control_agent.py run --config {config_path} --dry_run"
+        validation_path = _write_validation_log(
+            output_dir=config.output_dir,
+            run_id=actual_run_id,
+            command=command,
+            summary=summary,
+            results_path=writer.results_path,
+        )
+        summary["validation_log_file"] = validation_path.name
     summary_path = write_summary(config.output_dir, actual_run_id, summary)
     report_path = write_report(
         config.output_dir,

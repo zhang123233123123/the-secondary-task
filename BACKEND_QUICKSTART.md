@@ -68,6 +68,7 @@ python3 control_agent.py run --config config.yaml --run_id run_20260218_123000_a
 - `output/results_{run_id}.jsonl`
 - `output/run_summary_{run_id}.json`
 - `output/report_{run_id}.md`
+- `output/validation_{run_id}.log`（仅 `--dry_run` 生成）
 
 说明：
 - 运行时始终按 turn 立即 flush（`flush_policy_effective=per_turn`），用于保证断点续传一致性。
