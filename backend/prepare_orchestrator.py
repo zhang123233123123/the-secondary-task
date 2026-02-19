@@ -9,6 +9,7 @@ from typing import Any
 from .frozen_registry import init_frozen_layout
 from .input_loader import compute_sha256, load_dialogues, load_prompts
 from .llm_clients import OpenAICompatibleChatClient
+from .prepare_validation import validate_prepared_dialogues
 from .runtime_config import RuntimeConfig
 
 
@@ -118,6 +119,12 @@ def prepare_inputs(
 
     prompts_payload = _normalize_llm1_payload(_extract_json_payload(llm1_result.text))
     dialogues_payload = _normalize_llm2_payload(_extract_json_payload(llm2_result.text))
+    validate_prepared_dialogues(
+        dialogues_payload,
+        expected_count=config.prepare_dialogue_count,
+        expected_turns=config.prepare_dialogue_turns,
+        expected_distribution=config.prepare_domain_distribution,
+    )
 
     prompts_candidate = candidates_dir / f"prompts_candidate_{prepare_id}.json"
     dialogues_candidate = candidates_dir / f"dialogues_candidate_{prepare_id}.jsonl"
