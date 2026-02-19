@@ -13,7 +13,7 @@ input_compatibility_mode: true
 frozen_index_path: frozen_inputs/index.json
 require_approved_prompts: true
 require_approved_dialogues: true
-prepare_dialogue_count: 2000
+prepare_dialogue_count: 10
 prepare_dialogue_turns: 6
 prepare_domain_distribution:
   creative: 0.25
