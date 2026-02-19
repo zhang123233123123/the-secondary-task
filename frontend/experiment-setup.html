@@ -791,12 +791,15 @@
             }
             if (statusText) {
               statusText.innerHTML =
-                'Run started: <span class="text-primary font-mono">' + data.run_id + "</span>";
+                'Run started: <span class="text-primary font-mono">' + data.run_id + "</span>. Redirecting to Monitor...";
             }
             currentRunId = data.run_id;
-            window.history.replaceState({}, "", withRunId("/frontend/experiment-setup.html", currentRunId));
             syncLinks(currentRunId);
-            startStatusPolling(data.run_id);
+            
+            // Auto-redirect to Monitor page after successful start
+            setTimeout(function() {
+              window.location.href = withRunId("/frontend/live-monitor.html", data.run_id);
+            }, 1000);
           } catch (error) {
             if (statusText) {
               statusText.innerHTML = "Start failed: " + String(error.message || error);
