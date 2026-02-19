@@ -22,6 +22,7 @@ def test_write_report_creates_markdown_summary(tmp_path):
         "error_rows": 1,
         "error_rate": 0.5,
         "refusal_count": 0,
+        "refusal_rate": 0.0,
         "truncated_count": 0,
         "aborted": False,
         "abort_reason": None,
@@ -46,4 +47,5 @@ def test_write_report_creates_markdown_summary(tmp_path):
     assert "Run Report: run_test" in report
     assert "dry_run: `true`" in report
     assert "error_rate: `0.5`" in report
+    assert "refusal_rate: `0.0`" in report
     assert "D1 / evil / turn=1 / error=generate" in report

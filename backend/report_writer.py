@@ -45,6 +45,7 @@ def write_report(
         f"- error_rows: `{summary.get('error_rows')}`",
         f"- error_rate: `{summary.get('error_rate')}`",
         f"- refusal_count: `{summary.get('refusal_count')}`",
+        f"- refusal_rate: `{summary.get('refusal_rate')}`",
         f"- truncated_count: `{summary.get('truncated_count')}`",
         f"- aborted: `{summary.get('aborted')}`",
         f"- abort_reason: `{summary.get('abort_reason')}`",

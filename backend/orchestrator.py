@@ -289,6 +289,7 @@ def run_experiment(
         "new_judge_parse_errors": stats.judge_parse_errors,
         "truncated_count": final_resume_state.truncated_count,
         "refusal_count": final_resume_state.refusal_count,
+        "refusal_rate": (final_resume_state.refusal_count / total_rows) if total_rows else 0.0,
         "aborted": abort_reason is not None,
         "abort_reason": abort_reason,
         **hashes,
