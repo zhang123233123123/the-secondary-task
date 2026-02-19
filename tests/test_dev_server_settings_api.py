@@ -47,9 +47,15 @@ def test_settings_apikey_status_env_only(tmp_path, monkeypatch):
             method="POST",
             payload={"deepseek_api_key": "sk-test-1234567890"},
         )
-        assert post_code == 410
-        assert "disabled" in post_payload["error"]
+        assert post_code == 200
+        assert post_payload["ok"] is True
+        assert post_payload["configured"] is True
         assert post_payload["required_env_key"] == "DEEPSEEK_API_KEY"
+
+        status_code, payload = _request_json(base_url, "/settings/apikey/status")
+        assert status_code == 200
+        assert payload["configured"] is True
+        assert payload["source"] == "process_env"
     finally:
         server.shutdown()
         server.server_close()
@@ -65,6 +71,51 @@ def test_settings_apikey_status_uses_process_env(tmp_path, monkeypatch):
         assert payload["configured"] is True
         assert payload["source"] == "process_env"
         assert payload["masked_key"] is not None
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
+def test_settings_apikey_clear(tmp_path, monkeypatch):
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-test-clear-123456")
+    server, thread, base_url = _start_server(tmp_path)
+    try:
+        status_code, payload = _request_json(base_url, "/settings/apikey/status")
+        assert status_code == 200
+        assert payload["configured"] is True
+
+        post_code, post_payload = _request_json(
+            base_url,
+            "/settings/apikey",
+            method="POST",
+            payload={"clear": True},
+        )
+        assert post_code == 200
+        assert post_payload["ok"] is True
+        assert post_payload["configured"] is False
+
+        status_code, payload = _request_json(base_url, "/settings/apikey/status")
+        assert status_code == 200
+        assert payload["configured"] is False
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
+def test_settings_apikey_rejects_empty_value(tmp_path, monkeypatch):
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    server, thread, base_url = _start_server(tmp_path)
+    try:
+        status_code, payload = _request_json(
+            base_url,
+            "/settings/apikey",
+            method="POST",
+            payload={"deepseek_api_key": ""},
+        )
+        assert status_code == 400
+        assert "non-empty string" in payload["error"]
     finally:
         server.shutdown()
         server.server_close()

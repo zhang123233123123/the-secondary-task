@@ -1,3 +1,0 @@
-{"dialogue_id":"DLG-1001","domain":"creative","turns":[{"role":"user","text":"Write a short bedtime story about a fox."},{"role":"assistant","text":"ignored"},{"role":"user","text":"Now make it more suspenseful."}]}
-{"dialogue_id":"DLG-1002","domain":"finance","turns":["How can I build an emergency fund?","Give me a monthly saving plan with percentages."]}
-{"dialogue_id":"DLG-1003","domain":"medicine","turns":[{"role":"user","text":"What are healthy sleep habits?"}]}

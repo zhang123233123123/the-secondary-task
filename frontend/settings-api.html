@@ -82,12 +82,37 @@
           </div>
 
           <div class="space-y-2">
-            <p class="text-xs text-text-subtle">Set the key in your shell, then restart `dev_server.py`:</p>
+            <label class="text-sm text-white" for="settings-key-input">Set Key in This Session</label>
+            <input
+              id="settings-key-input"
+              type="password"
+              autocomplete="off"
+              placeholder="sk-..."
+              class="w-full bg-background-dark border border-border-dark rounded-lg py-2.5 px-3 text-sm font-mono focus:outline-none focus:border-primary"
+            />
+            <p class="text-xs text-text-subtle">
+              This writes to the current <span class="font-mono">dev_server.py</span> process environment only.
+              Restarting the service clears it unless you export in shell.
+            </p>
             <pre class="bg-background-dark border border-border-dark rounded-lg p-3 text-xs font-mono overflow-x-auto"><code>export DEEPSEEK_API_KEY="your_key_here"
 python dev_server.py --port 8000</code></pre>
           </div>
 
           <div class="flex items-center gap-3">
+            <button
+              id="settings-save-btn"
+              type="button"
+              class="px-5 py-2.5 rounded-lg bg-primary hover:bg-primary-dark text-white text-sm font-semibold transition-colors"
+            >
+              Save Key
+            </button>
+            <button
+              id="settings-clear-btn"
+              type="button"
+              class="px-5 py-2.5 rounded-lg border border-border-dark text-red-300 hover:text-red-200 hover:bg-background-dark text-sm transition-colors"
+            >
+              Clear Key
+            </button>
             <button
               id="settings-refresh-btn"
               type="button"
@@ -140,6 +165,9 @@ python dev_server.py --port 8000</code></pre>
         const badge = document.getElementById("settings-status-badge");
         const maskedValue = document.getElementById("settings-masked-value");
         const msg = document.getElementById("settings-message");
+        const keyInput = document.getElementById("settings-key-input");
+        const saveBtn = document.getElementById("settings-save-btn");
+        const clearBtn = document.getElementById("settings-clear-btn");
         const refreshBtn = document.getElementById("settings-refresh-btn");
         const setupLink = document.getElementById("settings-open-setup");
         const monitorLink = document.getElementById("settings-open-monitor");
@@ -189,6 +217,49 @@ python dev_server.py --port 8000</code></pre>
           }
         }
 
+        async function saveKey() {
+          const value = (keyInput && keyInput.value ? keyInput.value : "").trim();
+          if (!value) {
+            if (msg) msg.textContent = "Please enter a non-empty API key first.";
+            return;
+          }
+          try {
+            if (msg) msg.textContent = "Saving API key...";
+            const response = await fetch("/settings/apikey", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ deepseek_api_key: value }),
+            });
+            const data = await response.json();
+            if (!response.ok || !data.ok) throw new Error(data.error || "Failed to save key");
+            if (keyInput) keyInput.value = "";
+            if (msg) msg.textContent = data.message || "API key saved.";
+            await refreshStatus();
+          } catch (error) {
+            if (msg) msg.textContent = "Save failed: " + String(error.message || error);
+          }
+        }
+
+        async function clearKey() {
+          try {
+            if (msg) msg.textContent = "Clearing API key...";
+            const response = await fetch("/settings/apikey", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ clear: true }),
+            });
+            const data = await response.json();
+            if (!response.ok || !data.ok) throw new Error(data.error || "Failed to clear key");
+            if (keyInput) keyInput.value = "";
+            if (msg) msg.textContent = data.message || "API key cleared.";
+            await refreshStatus();
+          } catch (error) {
+            if (msg) msg.textContent = "Clear failed: " + String(error.message || error);
+          }
+        }
+
+        if (saveBtn) saveBtn.addEventListener("click", saveKey);
+        if (clearBtn) clearBtn.addEventListener("click", clearKey);
         if (refreshBtn) refreshBtn.addEventListener("click", refreshStatus);
         syncLinks();
         refreshStatus();

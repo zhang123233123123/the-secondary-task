@@ -582,14 +582,42 @@ class DevRequestHandler(SimpleHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802
         if self.path == "/settings/apikey":
+            try:
+                payload = self._read_json_body()
+            except json.JSONDecodeError:
+                self._json_response(HTTPStatus.BAD_REQUEST, {"error": "invalid json"})
+                return
+            clear = bool(payload.get("clear", False))
+            if clear:
+                os.environ.pop(self.deepseek_key_name, None)
+                self._json_response(
+                    HTTPStatus.OK,
+                    {
+                        "ok": True,
+                        "message": "API key cleared from current dev_server process.",
+                        "required_env_key": self.deepseek_key_name,
+                        **self._settings_payload(),
+                    },
+                )
+                return
+            key_value = payload.get("deepseek_api_key")
+            if not isinstance(key_value, str) or not key_value.strip():
+                self._json_response(
+                    HTTPStatus.BAD_REQUEST,
+                    {
+                        "error": "deepseek_api_key must be a non-empty string",
+                        "required_env_key": self.deepseek_key_name,
+                    },
+                )
+                return
+            os.environ[self.deepseek_key_name] = key_value.strip()
             self._json_response(
-                HTTPStatus.GONE,
+                HTTPStatus.OK,
                 {
-                    "error": (
-                        "API key write is disabled. Set DEEPSEEK_API_KEY in your shell "
-                        "environment and restart the service."
-                    ),
+                    "ok": True,
+                    "message": "API key updated in current dev_server process.",
                     "required_env_key": self.deepseek_key_name,
+                    **self._settings_payload(),
                 },
             )
             return
