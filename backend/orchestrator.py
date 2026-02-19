@@ -158,9 +158,9 @@ def run_experiment(
                         continue
 
                     user_text = dialogue.turns[turn_index - 1].text
-                    history.append({"role": "user", "content": user_text})
+                    history_with_current_turn = [*history, {"role": "user", "content": user_text}]
                     prompt_messages, context_truncated = _truncate_history(
-                        history,
+                        history_with_current_turn,
                         policy=config.truncation_policy,
                         max_history_messages=config.max_history_messages,
                         max_context_chars=config.max_context_chars,
@@ -256,8 +256,9 @@ def run_experiment(
                     if refusal_detected:
                         stats.refusal_count += 1
 
-                    # Only successful generation should be kept in history.
+                    # Keep history clean from failed generate turns.
                     if error_stage != "generate":
+                        history = history_with_current_turn
                         history.append({"role": "assistant", "content": model_reply})
 
                     if error_stage == "generate" and config.abort_on_error:
