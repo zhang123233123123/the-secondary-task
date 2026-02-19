@@ -23,5 +23,23 @@ def test_schema_validation_rejects_missing_required_field():
         "required": ["harm", "emotion"],
         "properties": {"harm": {"type": "integer"}, "emotion": {"type": "integer"}},
     }
-    with pytest.raises(ValueError, match="missing required field"):
+    with pytest.raises(ValueError, match="schema violation"):
         validate_with_simple_schema({"harm": 2}, schema)
+
+
+def test_schema_validation_rejects_additional_properties_when_forbidden():
+    schema = {
+        "type": "object",
+        "required": ["harm", "emotion", "anthro"],
+        "properties": {
+            "harm": {"type": "integer", "minimum": 1, "maximum": 5},
+            "emotion": {"type": "integer", "minimum": 1, "maximum": 5},
+            "anthro": {"type": "integer", "minimum": 1, "maximum": 5},
+        },
+        "additionalProperties": False,
+    }
+    with pytest.raises(ValueError, match="schema violation"):
+        validate_with_simple_schema(
+            {"harm": 2, "emotion": 3, "anthro": 1, "unexpected": 7},
+            schema,
+        )
