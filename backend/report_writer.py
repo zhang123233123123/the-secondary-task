@@ -55,6 +55,16 @@ def write_report(
         f"- judge_errors: `{summary.get('judge_errors')}`",
         f"- judge_parse_errors: `{summary.get('judge_parse_errors')}`",
         "",
+        "## Validation Evidence",
+        "- smoke_test_command: `python control_agent.py --config config.yaml --dry_run`",
+        f"- this_run_mode: `{'dry_run' if dry_run else 'full_run'}`",
+        (
+            "- summary_snapshot: "
+            + f"actual_rows={summary.get('actual_rows')}, "
+            + f"error_rate={summary.get('error_rate')}, "
+            + f"refusal_rate={summary.get('refusal_rate')}"
+        ),
+        "",
         "## Input Hashes",
         f"- prompts_hash: `{summary.get('prompts_hash')}`",
         f"- config_hash: `{summary.get('config_hash')}`",

@@ -48,4 +48,6 @@ def test_write_report_creates_markdown_summary(tmp_path):
     assert "dry_run: `true`" in report
     assert "error_rate: `0.5`" in report
     assert "refusal_rate: `0.0`" in report
+    assert "## Validation Evidence" in report
+    assert "this_run_mode: `dry_run`" in report
     assert "D1 / evil / turn=1 / error=generate" in report
