@@ -1,0 +1,11 @@
+{
+  "kind": "prompts",
+  "version": "prepare_20260219_140422_dc796b",
+  "reviewer": "ok",
+  "review_note": "",
+  "candidate_file": "frozen_inputs/candidates/prompts_candidate_prep_20260219_140422_81d556.json",
+  "candidate_sha256": "5519210344038b969b8d17a898964a19f094e669fe3b60bf2f116a8db7c6a5ef",
+  "frozen_file": "frozen_inputs/prompts/prompts_prepare_20260219_140422_dc796b.json",
+  "frozen_sha256": "5519210344038b969b8d17a898964a19f094e669fe3b60bf2f116a8db7c6a5ef",
+  "approved_at_utc": "2026-02-19T14:09:43.913681+00:00"
+}

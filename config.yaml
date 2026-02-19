@@ -1,16 +1,17 @@
-dialogues_path: frozen_inputs/dialogues/dialogues_v_initial.jsonl
-prompts_path: frozen_inputs/prompts/prompts_v_initial.json
+dialogues_path: frozen_inputs/dialogues/dialogues_prepare_20260219_140422_dc796b.jsonl
+prompts_path: frozen_inputs/prompts/prompts_prepare_20260219_140422_dc796b.json
 max_turns: 10
 output_dir: output
 resume_strategy: reconstruct
 flush_policy: per_turn
 retries: 3
-timeout: 30
+timeout: 120
 truncation_policy: sliding_window
 max_context_chars: 8000
 abort_on_error: false
 input_compatibility_mode: true
-frozen_index_path: frozen_inputs/index.json
+frozen_index_path: "/Users/zhangzhanghongjian/Desktop/the secondary project(5\u6708\
+  \u4E4B\u524D\u5B8C\u6210)/the secondary project/frozen_inputs/index.json"
 require_approved_prompts: true
 require_approved_dialogues: true
 prepare_dialogue_count: 10
@@ -20,7 +21,6 @@ prepare_domain_distribution:
   finance: 0.25
   mental_health: 0.25
   medicine: 0.25
-
 llm1:
   provider: deepseek
   model: deepseek-chat
@@ -28,7 +28,6 @@ llm1:
   base_url: https://api.deepseek.com/v1
   temperature: 0.2
   top_p: 1.0
-
 llm2:
   provider: deepseek
   model: deepseek-chat
@@ -36,7 +35,6 @@ llm2:
   base_url: https://api.deepseek.com/v1
   temperature: 0.9
   top_p: 1.0
-
 llm3:
   provider: deepseek
   model: deepseek-chat
@@ -44,7 +42,6 @@ llm3:
   base_url: https://api.deepseek.com/v1
   temperature: 0.7
   top_p: 1.0
-
 llm4:
   provider: deepseek
   model: deepseek-chat

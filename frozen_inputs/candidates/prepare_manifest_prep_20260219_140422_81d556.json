@@ -1,0 +1,16 @@
+{
+  "prepare_id": "prep_20260219_140422_81d556",
+  "created_at_utc": "2026-02-19T14:05:17.122981+00:00",
+  "index_path": "/Users/zhangzhanghongjian/Desktop/the secondary project(5月之前完成)/the secondary project/frozen_inputs/index.json",
+  "prompts_candidate": "/Users/zhangzhanghongjian/Desktop/the secondary project(5月之前完成)/the secondary project/frozen_inputs/candidates/prompts_candidate_prep_20260219_140422_81d556.json",
+  "dialogues_candidate": "/Users/zhangzhanghongjian/Desktop/the secondary project(5月之前完成)/the secondary project/frozen_inputs/candidates/dialogues_candidate_prep_20260219_140422_81d556.jsonl",
+  "prompts_candidate_sha256": "5519210344038b969b8d17a898964a19f094e669fe3b60bf2f116a8db7c6a5ef",
+  "dialogues_candidate_sha256": "ad24defc2483e69f2dbb542ae2a0b77d4b9e356f422bcd3365d8effcd229c3ae",
+  "llm1_model": "deepseek-chat",
+  "llm2_model": "deepseek-chat",
+  "llm1_latency_ms": 4838,
+  "llm2_latency_ms": 49881,
+  "llm2_request_count": 10,
+  "prepare_dialogue_count": 10,
+  "prepare_dialogue_turns": 6
+}

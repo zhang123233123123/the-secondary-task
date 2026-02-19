@@ -1,7 +1,7 @@
 {
   "active": {
-    "prompts_version": "v_initial",
-    "dialogues_version": "v_initial"
+    "prompts_version": "prepare_20260219_140422_dc796b",
+    "dialogues_version": "prepare_20260219_140422_dc796b"
   },
   "prompts_versions": [
     {
@@ -13,6 +13,16 @@
       "review_note": "Initial baseline imported from prompts.json",
       "candidate_file": "prompts.json",
       "candidate_sha256": "986a4fcd29e9fe8561af57459abdad97ab8e953b42196e812dce090d4cbabdf1"
+    },
+    {
+      "version": "prepare_20260219_140422_dc796b",
+      "file": "frozen_inputs/prompts/prompts_prepare_20260219_140422_dc796b.json",
+      "sha256": "5519210344038b969b8d17a898964a19f094e669fe3b60bf2f116a8db7c6a5ef",
+      "approved_by": "ok",
+      "approved_at_utc": "2026-02-19T14:09:43.913681+00:00",
+      "review_note": "",
+      "candidate_file": "frozen_inputs/candidates/prompts_candidate_prep_20260219_140422_81d556.json",
+      "candidate_sha256": "5519210344038b969b8d17a898964a19f094e669fe3b60bf2f116a8db7c6a5ef"
     }
   ],
   "dialogues_versions": [
@@ -25,6 +35,16 @@
       "review_note": "Initial baseline imported from dialogues.jsonl",
       "candidate_file": "dialogues.jsonl",
       "candidate_sha256": "5e22c8e30698b5a681d18cb599b2abc19f24ebcffa5f0661e41b22f2cef673f5"
+    },
+    {
+      "version": "prepare_20260219_140422_dc796b",
+      "file": "frozen_inputs/dialogues/dialogues_prepare_20260219_140422_dc796b.jsonl",
+      "sha256": "ad24defc2483e69f2dbb542ae2a0b77d4b9e356f422bcd3365d8effcd229c3ae",
+      "approved_by": "ok",
+      "approved_at_utc": "2026-02-19T14:09:50.558600+00:00",
+      "review_note": "",
+      "candidate_file": "frozen_inputs/candidates/dialogues_candidate_prep_20260219_140422_81d556.jsonl",
+      "candidate_sha256": "ad24defc2483e69f2dbb542ae2a0b77d4b9e356f422bcd3365d8effcd229c3ae"
     }
   ]
 }
