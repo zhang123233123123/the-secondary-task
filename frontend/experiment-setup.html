@@ -205,9 +205,10 @@
               <div class="flex items-start justify-between">
                 <div class="flex items-center gap-3">
                   <div
+                    id="setup-dialogues-icon-wrap"
                     class="h-10 w-10 rounded-lg bg-green-500/10 flex items-center justify-center border border-green-500/20 text-green-500"
                   >
-                    <span class="material-symbols-outlined">check_circle</span>
+                    <span id="setup-dialogues-icon" class="material-symbols-outlined">check_circle</span>
                   </div>
                   <div>
                     <h3 class="text-white font-medium text-sm">Dialogue Dataset</h3>
@@ -216,15 +217,12 @@
                     </p>
                   </div>
                 </div>
-                <button class="text-text-subtle hover:text-white transition-colors">
-                  <span class="material-symbols-outlined">more_vert</span>
-                </button>
               </div>
               <div class="flex items-center gap-2 mt-2">
                 <div class="h-1.5 flex-1 bg-border-dark rounded-full overflow-hidden">
-                  <div class="h-full w-full bg-green-500 rounded-full"></div>
+                  <div id="setup-dialogues-progress" class="h-full bg-green-500 rounded-full" style="width: 0%"></div>
                 </div>
-                <span class="text-xs text-green-500 font-medium">100%</span>
+                <span id="setup-dialogues-percent" class="text-xs text-text-subtle font-medium">0%</span>
               </div>
               <div class="flex justify-between text-xs text-text-subtle font-mono">
                 <span id="setup-dialogues-size">-</span>
@@ -238,24 +236,22 @@
               <div class="flex items-start justify-between">
                 <div class="flex items-center gap-3">
                   <div
+                    id="setup-prompts-icon-wrap"
                     class="h-10 w-10 rounded-lg bg-green-500/10 flex items-center justify-center border border-green-500/20 text-green-500"
                   >
-                    <span class="material-symbols-outlined">check_circle</span>
+                    <span id="setup-prompts-icon" class="material-symbols-outlined">check_circle</span>
                   </div>
                   <div>
                     <h3 class="text-white font-medium text-sm">System Prompts</h3>
                     <p id="setup-prompts-name" class="text-text-subtle text-xs font-mono mt-0.5">prompts.json</p>
                   </div>
                 </div>
-                <button class="text-text-subtle hover:text-white transition-colors">
-                  <span class="material-symbols-outlined">more_vert</span>
-                </button>
               </div>
               <div class="flex items-center gap-2 mt-2">
                 <div class="h-1.5 flex-1 bg-border-dark rounded-full overflow-hidden">
-                  <div class="h-full w-full bg-green-500 rounded-full"></div>
+                  <div id="setup-prompts-progress" class="h-full bg-green-500 rounded-full" style="width: 0%"></div>
                 </div>
-                <span class="text-xs text-green-500 font-medium">100%</span>
+                <span id="setup-prompts-percent" class="text-xs text-text-subtle font-medium">0%</span>
               </div>
               <div class="flex justify-between text-xs text-text-subtle font-mono">
                 <span id="setup-prompts-size">-</span>
@@ -264,12 +260,13 @@
             </div>
             <!-- Additional Upload Placeholder -->
             <div
-              class="group relative flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border-dark bg-transparent p-6 hover:border-text-subtle transition-all cursor-pointer opacity-60 hover:opacity-100"
+              class="relative flex flex-col gap-2 rounded-xl border border-border-dark bg-background-dark/30 p-6"
             >
-              <span class="material-symbols-outlined text-text-subtle text-3xl"
-                >upload_file</span
-              >
-              <p class="text-text-subtle text-sm">Drop additional context files here</p>
+              <p class="text-text-subtle text-xs leading-relaxed">
+                Browser upload is disabled in this build. To update inputs, use frozen files and edit
+                <span class="font-mono">config.yaml</span>:
+                <span class="font-mono">dialogues_path</span> / <span class="font-mono">prompts_path</span>.
+              </p>
             </div>
           </div>
           <!-- Right Column: Configuration (7 columns wide) -->
@@ -508,6 +505,14 @@
         const promptsName = document.getElementById("setup-prompts-name");
         const promptsSize = document.getElementById("setup-prompts-size");
         const promptsStatus = document.getElementById("setup-prompts-status");
+        const dialoguesProgress = document.getElementById("setup-dialogues-progress");
+        const dialoguesPercent = document.getElementById("setup-dialogues-percent");
+        const dialoguesIcon = document.getElementById("setup-dialogues-icon");
+        const dialoguesIconWrap = document.getElementById("setup-dialogues-icon-wrap");
+        const promptsProgress = document.getElementById("setup-prompts-progress");
+        const promptsPercent = document.getElementById("setup-prompts-percent");
+        const promptsIcon = document.getElementById("setup-prompts-icon");
+        const promptsIconWrap = document.getElementById("setup-prompts-icon-wrap");
         const monitorLink = document.getElementById("setup-open-monitor");
         const resultsLink = document.getElementById("setup-open-results");
         const settingsLink = document.getElementById("setup-open-settings");
@@ -557,7 +562,7 @@
           return value.toFixed(value < 10 && unitIndex > 0 ? 1 : 0) + " " + units[unitIndex];
         }
 
-        function setFileInfo(nameEl, sizeEl, statusEl, fileInfo) {
+        function setFileInfo(nameEl, sizeEl, statusEl, fileInfo, ui) {
           if (!fileInfo) return;
           if (nameEl && fileInfo.relative_path) nameEl.textContent = fileInfo.relative_path;
           if (sizeEl) sizeEl.textContent = fileInfo.exists ? formatBytes(fileInfo.size_bytes) : "-";
@@ -565,6 +570,22 @@
           if (statusEl) {
             statusEl.classList.toggle("text-green-500", !!fileInfo.exists);
             statusEl.classList.toggle("text-red-400", !fileInfo.exists);
+          }
+          if (ui?.progressEl) ui.progressEl.style.width = fileInfo.exists ? "100%" : "0%";
+          if (ui?.percentEl) {
+            ui.percentEl.textContent = fileInfo.exists ? "100%" : "0%";
+            ui.percentEl.classList.toggle("text-green-500", !!fileInfo.exists);
+            ui.percentEl.classList.toggle("text-red-400", !fileInfo.exists);
+            ui.percentEl.classList.toggle("text-text-subtle", false);
+          }
+          if (ui?.iconEl && ui?.iconWrapEl) {
+            ui.iconEl.textContent = fileInfo.exists ? "check_circle" : "error";
+            ui.iconWrapEl.classList.toggle("text-green-500", !!fileInfo.exists);
+            ui.iconWrapEl.classList.toggle("border-green-500/20", !!fileInfo.exists);
+            ui.iconWrapEl.classList.toggle("bg-green-500/10", !!fileInfo.exists);
+            ui.iconWrapEl.classList.toggle("text-red-400", !fileInfo.exists);
+            ui.iconWrapEl.classList.toggle("border-red-400/30", !fileInfo.exists);
+            ui.iconWrapEl.classList.toggle("bg-red-500/10", !fileInfo.exists);
           }
         }
 
@@ -615,13 +636,31 @@
             );
             if (!response.ok) throw new Error("Failed to load input status");
             const data = await response.json();
-            setFileInfo(dialoguesName, dialoguesSize, dialoguesStatus, data.files?.dialogues);
-            setFileInfo(promptsName, promptsSize, promptsStatus, data.files?.prompts);
+            setFileInfo(dialoguesName, dialoguesSize, dialoguesStatus, data.files?.dialogues, {
+              progressEl: dialoguesProgress,
+              percentEl: dialoguesPercent,
+              iconEl: dialoguesIcon,
+              iconWrapEl: dialoguesIconWrap,
+            });
+            setFileInfo(promptsName, promptsSize, promptsStatus, data.files?.prompts, {
+              progressEl: promptsProgress,
+              percentEl: promptsPercent,
+              iconEl: promptsIcon,
+              iconWrapEl: promptsIconWrap,
+            });
             applyDefaults(data.defaults || {});
             const missing = [];
-            if (!data.files?.dialogues?.exists) missing.push("dialogues.jsonl");
-            if (!data.files?.prompts?.exists) missing.push("prompts.json");
-            if (!data.files?.config?.exists) missing.push(configPath);
+            if (!data.files?.dialogues?.exists) {
+              missing.push(data.files?.dialogues?.relative_path || "dialogues_path");
+            }
+            if (!data.files?.prompts?.exists) {
+              missing.push(data.files?.prompts?.relative_path || "prompts_path");
+            }
+            if (!data.files?.config?.exists) {
+              missing.push(data.files?.config?.relative_path || configPath);
+            }
+            if (data.path_errors?.dialogues) missing.push("invalid dialogues_path");
+            if (data.path_errors?.prompts) missing.push("invalid prompts_path");
             if (statusText) {
               statusText.textContent = missing.length
                 ? "Missing input files: " + missing.join(", ")

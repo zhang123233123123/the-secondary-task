@@ -69,13 +69,25 @@ class DevRequestHandler(SimpleHTTPRequestHandler):
         return merged
 
     @staticmethod
-    def _file_status(path: Path) -> dict:
+    def _resolve_config_file_path(root: Path, config_path: Path, raw_path: str) -> Path:
+        base_dir = config_path.parent
+        candidate = (base_dir / raw_path).resolve()
+        if root != candidate and root not in candidate.parents:
+            raise ValueError("path must stay inside repository root")
+        return candidate
+
+    @staticmethod
+    def _file_status(root: Path, path: Path, fallback_relative_path: str | None = None) -> dict:
+        try:
+            relative_path = str(path.resolve().relative_to(root))
+        except ValueError:
+            relative_path = fallback_relative_path or str(path)
         if not path.exists():
             return {
                 "exists": False,
                 "size_bytes": 0,
                 "modified_at_utc": None,
-                "relative_path": str(path.name),
+                "relative_path": relative_path,
             }
         stat = path.stat()
         return {
@@ -85,7 +97,7 @@ class DevRequestHandler(SimpleHTTPRequestHandler):
                 stat.st_mtime,
                 tz=dt.timezone.utc,
             ).isoformat(),
-            "relative_path": str(path.name),
+            "relative_path": relative_path,
         }
 
     @staticmethod
@@ -188,12 +200,34 @@ class DevRequestHandler(SimpleHTTPRequestHandler):
                 self._json_response(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
                 return
 
-            files = {
-                "config": self._file_status(config_path),
-                "dialogues": self._file_status(root / "dialogues.jsonl"),
-                "prompts": self._file_status(root / "prompts.json"),
-            }
             raw_config = self._load_yaml_dict(config_path)
+            dialogues_path_raw = str(raw_config.get("dialogues_path", "dialogues.jsonl"))
+            prompts_path_raw = str(raw_config.get("prompts_path", "prompts.json"))
+            path_errors: dict[str, str] = {}
+            try:
+                dialogues_path = self._resolve_config_file_path(root, config_path, dialogues_path_raw)
+            except ValueError as exc:
+                dialogues_path = root / dialogues_path_raw
+                path_errors["dialogues"] = str(exc)
+            try:
+                prompts_path = self._resolve_config_file_path(root, config_path, prompts_path_raw)
+            except ValueError as exc:
+                prompts_path = root / prompts_path_raw
+                path_errors["prompts"] = str(exc)
+
+            files = {
+                "config": self._file_status(root, config_path, fallback_relative_path=config_path_raw),
+                "dialogues": self._file_status(
+                    root,
+                    dialogues_path,
+                    fallback_relative_path=dialogues_path_raw,
+                ),
+                "prompts": self._file_status(
+                    root,
+                    prompts_path,
+                    fallback_relative_path=prompts_path_raw,
+                ),
+            }
             llm3 = raw_config.get("llm3", {}) if isinstance(raw_config.get("llm3"), dict) else {}
             llm4 = raw_config.get("llm4", {}) if isinstance(raw_config.get("llm4"), dict) else {}
             self._json_response(
@@ -203,6 +237,7 @@ class DevRequestHandler(SimpleHTTPRequestHandler):
                     if config_path.exists()
                     else config_path_raw,
                     "files": files,
+                    "path_errors": path_errors,
                     "defaults": {
                         "generator_model": str(llm3.get("model", "deepseek-chat")),
                         "judge_model": str(llm4.get("model", "deepseek-chat")),

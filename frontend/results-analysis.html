@@ -118,16 +118,7 @@
           </nav>
           <!-- User Actions -->
           <div class="flex items-center gap-3">
-            <button
-              class="flex items-center justify-center size-9 rounded-lg hover:bg-slate-800 text-slate-400 transition-colors"
-            >
-              <span class="material-symbols-outlined text-[20px]">notifications</span>
-            </button>
-            <button
-              class="flex items-center justify-center size-9 rounded-lg hover:bg-slate-800 text-slate-400 transition-colors"
-            >
-              <span class="material-symbols-outlined text-[20px]">account_circle</span>
-            </button>
+            <span id="results-top-run-id" class="text-xs font-mono text-slate-500">run: -</span>
           </div>
         </header>
       </div>
@@ -224,14 +215,7 @@
         </div>
         <!-- View Settings -->
         <div class="md:col-span-2 flex justify-end">
-          <div class="inline-flex rounded-lg border border-border-dark bg-background-dark p-1">
-            <button class="px-2.5 py-1.5 rounded bg-surface-dark text-white shadow-sm">
-              <span class="material-symbols-outlined text-[18px]">table_rows</span>
-            </button>
-            <button class="px-2.5 py-1.5 rounded text-slate-500 hover:text-slate-300 transition-colors">
-              <span class="material-symbols-outlined text-[18px]">grid_view</span>
-            </button>
-          </div>
+          <span class="text-xs text-slate-500 font-mono py-2">Table view</span>
         </div>
       </div>
       <!-- High Density Data Table -->
@@ -251,16 +235,13 @@
                   class="px-6 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider w-16"
                   scope="col"
                 >
-                  <div class="flex items-center gap-1 cursor-pointer hover:text-white">#</div>
+                  #
                 </th>
                 <th
                   class="px-6 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider"
                   scope="col"
                 >
-                  <div class="flex items-center gap-1 cursor-pointer hover:text-white">
-                    Dialogue ID
-                    <span class="material-symbols-outlined text-[14px]">unfold_more</span>
-                  </div>
+                  Dialogue ID
                 </th>
                 <th
                   class="px-6 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider"
@@ -278,32 +259,21 @@
                   class="px-6 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider"
                   scope="col"
                 >
-                  <div class="flex items-center gap-1 cursor-pointer hover:text-white">
-                    Turn #
-                    <span class="material-symbols-outlined text-[14px]">unfold_more</span>
-                  </div>
+                  Turn #
                 </th>
                 <th
                   class="px-6 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider text-right"
                   scope="col"
                 >
-                  <div class="flex items-center justify-end gap-1 cursor-pointer hover:text-white">
-                    Harm Score
-                    <span class="material-symbols-outlined text-[14px]">arrow_drop_down</span>
-                  </div>
+                  Harm Score
                 </th>
                 <th
                   class="px-6 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider text-right"
                   scope="col"
                 >
-                  <div class="flex items-center justify-end gap-1 cursor-pointer hover:text-white">
-                    Emotion Score
-                    <span class="material-symbols-outlined text-[14px]">unfold_more</span>
-                  </div>
+                  Emotion Score
                 </th>
-                <th class="relative px-6 py-3" scope="col">
-                  <span class="sr-only">Actions</span>
-                </th>
+                <th class="px-6 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider text-right" scope="col">Error Stage</th>
               </tr>
             </thead>
             <tbody id="results-table-body" class="bg-surface-dark divide-y divide-border-dark text-sm">
@@ -386,6 +356,7 @@
         const conditionFilter = document.getElementById("results-condition-filter");
         const statusBadge = document.getElementById("results-status-badge");
         const metaText = document.getElementById("results-meta-text");
+        const topRunIdEl = document.getElementById("results-top-run-id");
         const recordsFound = document.getElementById("results-records-found");
         const showingCount = document.getElementById("results-showing-count");
         const totalCount = document.getElementById("results-total-count");
@@ -550,6 +521,7 @@
             if (!runItem) throw new Error("Run metadata missing");
             selectedRunId = runItem.run_id;
             selectedResultsFile = runItem.results_file;
+            if (topRunIdEl) topRunIdEl.textContent = "run: " + selectedRunId;
             window.history.replaceState({}, "", withRunId("/frontend/results-analysis.html", selectedRunId));
             syncLinks(selectedRunId);
             setDownloadEnabled(!!selectedResultsFile);
@@ -568,10 +540,18 @@
             allRows = resultsText
               .split("\n")
               .filter(Boolean)
-              .map((line) => JSON.parse(line));
+              .map((line) => {
+                try {
+                  return JSON.parse(line);
+                } catch (_) {
+                  return null;
+                }
+              })
+              .filter(Boolean);
             applyFilters();
           } catch (error) {
             if (metaText) metaText.textContent = "Refresh failed: " + String(error.message || error);
+            if (topRunIdEl) topRunIdEl.textContent = "run: -";
             allRows = [];
             filteredRows = [];
             selectedResultsFile = null;
