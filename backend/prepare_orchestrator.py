@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import math
 import uuid
 from pathlib import Path
 from typing import Any
@@ -53,21 +54,59 @@ def _llm1_messages(config: RuntimeConfig) -> list[dict[str, str]]:
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 
 
-def _llm2_messages(config: RuntimeConfig) -> list[dict[str, str]]:
-    domains_json = json.dumps(config.prepare_domain_distribution, ensure_ascii=False)
+def _llm2_single_dialogue_messages(
+    config: RuntimeConfig,
+    *,
+    dialogue_index: int,
+    dialogue_count: int,
+    domain: str,
+) -> list[dict[str, str]]:
     system = (
-        "You are LLM2 Dialogue Generator. Return strict JSON only with top-level key "
-        "'dialogues'. No markdown."
+        "You are LLM2 Dialogue Generator. Return strict JSON only. "
+        "No markdown, no comments."
     )
     user = (
-        "Generate user-only dialogue scripts. "
-        f"count={config.prepare_dialogue_count}, turns_per_dialogue={config.prepare_dialogue_turns}. "
-        "Each dialogue item must contain: dialogue_id, domain, turns. "
-        "turns must be an array of objects with role='user' and text. "
-        f"Domain distribution target: {domains_json}. "
-        "Allowed domains: creative, finance, mental_health, medicine."
+        "Generate exactly one user-only dialogue script as a JSON object with keys: "
+        "dialogue_id, domain, turns. "
+        f"domain must be '{domain}'. "
+        f"turns must be exactly {config.prepare_dialogue_turns} items. "
+        "Each turn must be an object with role='user' and a non-empty text. "
+        f"This is item {dialogue_index}/{dialogue_count}."
     )
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
+
+
+def _build_domain_plan(expected_count: int, distribution: dict[str, float]) -> list[str]:
+    if expected_count <= 0:
+        return []
+
+    total_weight = sum(float(weight) for weight in distribution.values())
+    if total_weight <= 0:
+        raise ValueError("prepare_domain_distribution total weight must be > 0")
+
+    normalized = {
+        domain: float(weight) / total_weight for domain, weight in distribution.items()
+    }
+    base_counts: dict[str, int] = {}
+    remainders: list[tuple[float, str]] = []
+    assigned = 0
+    for domain in sorted(normalized.keys()):
+        expected = expected_count * normalized[domain]
+        count = int(math.floor(expected))
+        base_counts[domain] = count
+        assigned += count
+        remainders.append((expected - count, domain))
+
+    remainder_slots = expected_count - assigned
+    for _, domain in sorted(remainders, key=lambda item: (item[0], item[1]), reverse=True)[
+        :remainder_slots
+    ]:
+        base_counts[domain] += 1
+
+    plan: list[str] = []
+    for domain in sorted(base_counts.keys()):
+        plan.extend([domain] * base_counts[domain])
+    return plan
 
 
 def _normalize_llm1_payload(raw: Any) -> dict[str, Any]:
@@ -85,15 +124,29 @@ def _normalize_llm1_payload(raw: Any) -> dict[str, Any]:
     }
 
 
-def _normalize_llm2_payload(raw: Any) -> list[dict[str, Any]]:
+def _normalize_llm2_single_dialogue_payload(raw: Any) -> dict[str, Any]:
     if isinstance(raw, dict):
-        dialogues = raw.get("dialogues")
-        if not isinstance(dialogues, list):
-            raise ValueError("LLM2 payload must include list key 'dialogues'")
-        return dialogues
-    if isinstance(raw, list):
+        if isinstance(raw.get("dialogues"), list):
+            dialogues = raw["dialogues"]
+            if len(dialogues) != 1:
+                raise ValueError(
+                    f"LLM2 single-dialogue payload must contain exactly 1 item, got {len(dialogues)}"
+                )
+            item = dialogues[0]
+            if not isinstance(item, dict):
+                raise ValueError("LLM2 single-dialogue payload item must be an object")
+            return item
         return raw
-    raise ValueError("LLM2 payload must be JSON object or array")
+    if isinstance(raw, list):
+        if len(raw) != 1:
+            raise ValueError(
+                f"LLM2 single-dialogue payload array must contain exactly 1 item, got {len(raw)}"
+            )
+        item = raw[0]
+        if not isinstance(item, dict):
+            raise ValueError("LLM2 single-dialogue payload item must be an object")
+        return item
+    raise ValueError("LLM2 single-dialogue payload must be JSON object or single-item array")
 
 
 def prepare_inputs(
@@ -115,10 +168,34 @@ def prepare_inputs(
     llm2_client = OpenAICompatibleChatClient(config.llm2)
 
     llm1_result = llm1_client.chat(_llm1_messages(config), config.timeout_seconds)
-    llm2_result = llm2_client.chat(_llm2_messages(config), config.timeout_seconds)
 
     prompts_payload = _normalize_llm1_payload(_extract_json_payload(llm1_result.text))
-    dialogues_payload = _normalize_llm2_payload(_extract_json_payload(llm2_result.text))
+    dialogues_payload: list[dict[str, Any]] = []
+    llm2_total_latency_ms = 0
+    domain_plan = _build_domain_plan(
+        config.prepare_dialogue_count,
+        config.prepare_domain_distribution,
+    )
+    for dialogue_index, domain in enumerate(domain_plan, start=1):
+        llm2_result = llm2_client.chat(
+            _llm2_single_dialogue_messages(
+                config,
+                dialogue_index=dialogue_index,
+                dialogue_count=config.prepare_dialogue_count,
+                domain=domain,
+            ),
+            config.timeout_seconds,
+        )
+        llm2_total_latency_ms += llm2_result.latency_ms
+        dialogue_item = _normalize_llm2_single_dialogue_payload(
+            _extract_json_payload(llm2_result.text)
+        )
+        if not str(dialogue_item.get("dialogue_id", "")).strip():
+            dialogue_item["dialogue_id"] = f"{prepare_id}_dlg_{dialogue_index:05d}"
+        # Enforce requested domain so distribution and review filters remain deterministic.
+        dialogue_item["domain"] = domain
+        dialogues_payload.append(dialogue_item)
+
     validate_prepared_dialogues(
         dialogues_payload,
         expected_count=config.prepare_dialogue_count,
@@ -154,7 +231,8 @@ def prepare_inputs(
         "llm1_model": config.llm1.model,
         "llm2_model": config.llm2.model,
         "llm1_latency_ms": llm1_result.latency_ms,
-        "llm2_latency_ms": llm2_result.latency_ms,
+        "llm2_latency_ms": llm2_total_latency_ms,
+        "llm2_request_count": len(dialogues_payload),
         "prepare_dialogue_count": config.prepare_dialogue_count,
         "prepare_dialogue_turns": config.prepare_dialogue_turns,
     }

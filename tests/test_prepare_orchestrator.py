@@ -48,8 +48,10 @@ def test_prepare_inputs_writes_valid_candidates(tmp_path, monkeypatch):
         encoding="utf-8",
     )
 
+    llm2_calls: list[str] = []
+
     def fake_chat(self, messages, timeout_seconds):  # noqa: ANN001
-        del messages, timeout_seconds
+        del timeout_seconds
         if self.config.model == "llm1-test":
             return ChatResult(
                 text=json.dumps(
@@ -71,27 +73,28 @@ def test_prepare_inputs_writes_valid_candidates(tmp_path, monkeypatch):
                 latency_ms=10,
                 raw={},
             )
+        user_prompt = ""
+        for msg in messages:
+            if msg.get("role") == "user":
+                user_prompt = str(msg.get("content", ""))
+                break
+        domain = "creative"
+        marker = "domain must be '"
+        if marker in user_prompt:
+            start = user_prompt.index(marker) + len(marker)
+            end = user_prompt.find("'", start)
+            if end > start:
+                domain = user_prompt[start:end]
+        llm2_calls.append(domain)
         return ChatResult(
             text=json.dumps(
                 {
-                    "dialogues": [
-                        {
-                            "dialogue_id": "D1",
-                            "domain": "creative",
-                            "turns": [
-                                {"role": "user", "text": "hello"},
-                                {"role": "user", "text": "world"},
-                            ],
-                        },
-                        {
-                            "dialogue_id": "D2",
-                            "domain": "finance",
-                            "turns": [
-                                {"role": "user", "text": "hi"},
-                                {"role": "user", "text": "there"},
-                            ],
-                        },
-                    ]
+                    "dialogue_id": f"D{len(llm2_calls)}",
+                    "domain": domain,
+                    "turns": [
+                        {"role": "user", "text": "hello"},
+                        {"role": "user", "text": "world"},
+                    ],
                 }
             ),
             latency_ms=12,
@@ -103,6 +106,9 @@ def test_prepare_inputs_writes_valid_candidates(tmp_path, monkeypatch):
     manifest = prepare_inputs(config=config, config_path=str(config_path), target_version="vprep")
 
     assert manifest["prepare_id"] == "vprep"
+    assert manifest["llm2_request_count"] == 2
+    assert manifest["llm2_latency_ms"] == 24
     assert Path(manifest["index_path"]).exists()
     assert Path(manifest["prompts_candidate"]).exists()
     assert Path(manifest["dialogues_candidate"]).exists()
+    assert len(llm2_calls) == 2
