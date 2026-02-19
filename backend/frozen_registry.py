@@ -6,6 +6,8 @@ import shutil
 from pathlib import Path
 from typing import Any, Literal
 
+import yaml
+
 from .input_loader import compute_sha256, load_dialogues, load_prompts
 
 FrozenKind = Literal["prompts", "dialogues"]
@@ -213,3 +215,49 @@ def find_approved_version_for_file(
             return str(version) if isinstance(version, str) else None
     return None
 
+
+def apply_versions_to_config(
+    *,
+    config_path: str | Path,
+    index_path: str | Path,
+    prompts_version: str,
+    dialogues_version: str,
+) -> dict[str, str]:
+    config_file = Path(config_path)
+    raw = yaml.safe_load(config_file.read_text(encoding="utf-8")) or {}
+    if not isinstance(raw, dict):
+        raise ValueError("config yaml must be an object")
+
+    prompts_path = resolve_frozen_file(
+        index_path=index_path,
+        kind="prompts",
+        version=prompts_version,
+    )
+    dialogues_path = resolve_frozen_file(
+        index_path=index_path,
+        kind="dialogues",
+        version=dialogues_version,
+    )
+    set_active_versions(
+        index_path=index_path,
+        prompts_version=prompts_version,
+        dialogues_version=dialogues_version,
+    )
+
+    config_dir = config_file.resolve().parent
+    try:
+        raw["prompts_path"] = str(prompts_path.relative_to(config_dir))
+    except ValueError:
+        raw["prompts_path"] = str(prompts_path)
+    try:
+        raw["dialogues_path"] = str(dialogues_path.relative_to(config_dir))
+    except ValueError:
+        raw["dialogues_path"] = str(dialogues_path)
+    raw["frozen_index_path"] = str(Path(index_path))
+    raw["require_approved_prompts"] = True
+    raw["require_approved_dialogues"] = True
+    config_file.write_text(yaml.safe_dump(raw, sort_keys=False, allow_unicode=False), encoding="utf-8")
+    return {
+        "prompts_path": raw["prompts_path"],
+        "dialogues_path": raw["dialogues_path"],
+    }
