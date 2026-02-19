@@ -52,8 +52,19 @@ class DevRequestHandler(SimpleHTTPRequestHandler):
         runtime_dir = root / "output" / "runtime_configs"
         runtime_dir.mkdir(parents=True, exist_ok=True)
         config_path = runtime_dir / f"runtime_config_{run_id}.yaml"
+        
+        # Convert relative paths to absolute paths to avoid resolution issues
+        # when control_agent reads the config from the runtime_configs subdirectory
+        patched_payload = json.loads(json.dumps(payload))  # deep copy
+        for path_key in ["dialogues_path", "prompts_path", "frozen_index_path"]:
+            if path_key in patched_payload:
+                raw_value = str(patched_payload[path_key])
+                # Only convert if it's a relative path
+                if not Path(raw_value).is_absolute():
+                    patched_payload[path_key] = str(root / raw_value)
+        
         config_path.write_text(
-            yaml.safe_dump(payload, sort_keys=False, allow_unicode=False),
+            yaml.safe_dump(patched_payload, sort_keys=False, allow_unicode=False),
             encoding="utf-8",
         )
         return str(config_path.relative_to(root))
