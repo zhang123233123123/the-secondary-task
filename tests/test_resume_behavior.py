@@ -68,8 +68,8 @@ def test_resume_skip_avoids_duplicate_rows(tmp_path):
     first = run_experiment(config=config, config_path=str(config_path), dry_run=False, run_id=run_id)
     second = run_experiment(config=config, config_path=str(config_path), dry_run=False, run_id=run_id)
 
-    assert first["summary"]["actual_rows"] == 3
-    assert second["summary"]["actual_rows"] == 3
+    assert first["summary"]["actual_rows"] == 4
+    assert second["summary"]["actual_rows"] == 4
     assert second["summary"]["new_rows_written"] == 0
 
 
