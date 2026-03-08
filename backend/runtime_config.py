@@ -16,6 +16,10 @@ class LLMConfig:
     temperature: float
     top_p: float
     seed: int | None
+    max_new_tokens: int = 256
+    device_map: str = "auto"
+    load_in_4bit: bool = False
+    torch_dtype: str = "auto"
 
 
 @dataclass
@@ -54,6 +58,10 @@ def _load_llm_config(raw: dict[str, Any], default_model: str) -> LLMConfig:
         temperature=float(raw.get("temperature", 0.7)),
         top_p=float(raw.get("top_p", 1.0)),
         seed=raw.get("seed"),
+        max_new_tokens=int(raw.get("max_new_tokens", 256)),
+        device_map=str(raw.get("device_map", "auto")),
+        load_in_4bit=bool(raw.get("load_in_4bit", False)),
+        torch_dtype=str(raw.get("torch_dtype", "auto")),
     )
 
 

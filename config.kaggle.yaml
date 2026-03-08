@@ -1,0 +1,32 @@
+dialogues_path: frozen_inputs/candidates/dialogues_candidate_prep_20260219_130559_43f789.jsonl
+prompts_path: frozen_inputs/prompts/prompts_prepare_20260219_140422_dc796b.json
+max_turns: 10
+output_dir: output
+resume_strategy: reconstruct
+flush_policy: per_turn
+retries: 3
+timeout: 120
+truncation_policy: sliding_window
+max_context_chars: 8000
+abort_on_error: false
+input_compatibility_mode: true
+require_approved_prompts: false
+require_approved_dialogues: false
+
+llm3:
+  provider: transformers
+  model: google/gemma-3-12b-it
+  temperature: 0.1
+  top_p: 0.9
+  max_new_tokens: 256
+  load_in_4bit: true
+  device_map: auto
+  torch_dtype: auto
+
+llm4:
+  provider: deepseek
+  model: deepseek-chat
+  api_key_env: DEEPSEEK_API_KEY
+  base_url: https://api.deepseek.com/v1
+  temperature: 0.0
+  top_p: 1.0
