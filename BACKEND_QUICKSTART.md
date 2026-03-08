@@ -59,6 +59,16 @@ python3 control_agent.py --config config.yaml --dry_run
 python3 control_agent.py run --config config.yaml
 ```
 
+## 6.1 Kaggle: 开源 llm3 + DeepSeek llm4（评分）
+使用仓库内示例配置：
+```bash
+python3 control_agent.py run --config config.kaggle.yaml
+```
+说明：
+- `llm3.provider=transformers`，用于本地/HF 开源模型生成。
+- `llm4.provider=deepseek`，保持线上评分口径一致。
+- 该配置默认关闭 frozen 审批强校验，便于直接跑候选 dialogues。
+
 ## 7. 指定 run_id 续跑
 ```bash
 python3 control_agent.py run --config config.yaml --run_id run_20260218_123000_ab12cd
@@ -81,6 +91,7 @@ python3 dev_server.py --port 8000
 
 ## 10. 页面访问地址
 - 配置页: `http://127.0.0.1:8000/frontend/experiment-setup.html`
+- 配置编辑页: `http://127.0.0.1:8000/frontend/configuration.html`
 - 监控页: `http://127.0.0.1:8000/frontend/live-monitor.html`
 - 结果页: `http://127.0.0.1:8000/frontend/results-analysis.html`
 - Key 设置页: `http://127.0.0.1:8000/frontend/settings-api.html`

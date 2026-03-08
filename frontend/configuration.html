@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>StyleDrift Lab - Config Editor</title>
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              primary: "#3c83f6",
+              "primary-dark": "#2563eb",
+              "background-dark": "#101723",
+              "card-dark": "#182334",
+              "border-dark": "#314668",
+              "text-subtle": "#90a7cb",
+            },
+            fontFamily: {
+              display: ["Inter", "sans-serif"],
+              mono: ["Roboto Mono", "monospace"],
+            },
+          },
+        },
+      };
+    </script>
+  </head>
+  <body
+    class="bg-background-dark font-display text-white min-h-screen antialiased selection:bg-primary selection:text-white"
+  >
+    <div class="max-w-7xl mx-auto px-6 py-8 flex flex-col gap-6">
+      <header class="flex flex-wrap items-end justify-between gap-4 border-b border-border-dark pb-5">
+        <div class="space-y-1">
+          <p class="text-xs text-text-subtle uppercase tracking-wide">StyleDrift Lab</p>
+          <h1 class="text-3xl font-bold tracking-tight">Configuration Editor</h1>
+          <p class="text-sm text-text-subtle">Read and save <span class="font-mono">config.yaml</span> from browser.</p>
+        </div>
+        <div class="flex items-center gap-2 text-xs">
+          <a id="config-open-setup" href="/frontend/experiment-setup.html" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white">Setup</a>
+          <a id="config-open-monitor" href="/frontend/live-monitor.html" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white">Monitor</a>
+          <a id="config-open-results" href="/frontend/results-analysis.html" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white">Results</a>
+          <a id="config-open-prep" href="/frontend/data-preparation.html" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white">Data Prep</a>
+          <a id="config-open-settings" href="/frontend/settings-api.html" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white">API Key</a>
+        </div>
+      </header>
+
+      <section class="bg-card-dark border border-border-dark rounded-2xl p-6 grid grid-cols-1 lg:grid-cols-4 gap-4 items-end">
+        <label class="lg:col-span-2 flex flex-col gap-1">
+          <span class="text-xs text-text-subtle">Config Path</span>
+          <input id="config-path" class="bg-background-dark border border-border-dark rounded px-3 py-2 text-sm font-mono" value="config.yaml" />
+        </label>
+        <button id="config-load-btn" class="h-[38px] rounded bg-primary hover:bg-primary-dark text-white text-sm font-semibold">Load</button>
+        <button id="config-save-btn" class="h-[38px] rounded border border-border-dark bg-background-dark hover:bg-slate-800 text-sm font-semibold">Save</button>
+      </section>
+
+      <section class="grid grid-cols-1 xl:grid-cols-4 gap-6">
+        <aside class="xl:col-span-1 bg-card-dark border border-border-dark rounded-2xl p-5 space-y-3">
+          <h2 class="text-sm font-semibold uppercase tracking-wide text-text-subtle">Metadata</h2>
+          <div class="text-xs text-text-subtle">exists: <span id="config-meta-exists" class="text-white font-mono">-</span></div>
+          <div class="text-xs text-text-subtle">size_bytes: <span id="config-meta-size" class="text-white font-mono">-</span></div>
+          <div class="text-xs text-text-subtle">modified_at_utc: <span id="config-meta-modified" class="text-white font-mono">-</span></div>
+          <div class="text-xs text-text-subtle">top_keys:</div>
+          <pre id="config-meta-keys" class="bg-background-dark border border-border-dark rounded p-2 text-xs font-mono text-text-subtle overflow-auto max-h-[180px]">-</pre>
+          <div id="config-message" class="text-xs text-text-subtle">Ready.</div>
+        </aside>
+
+        <div class="xl:col-span-3 bg-card-dark border border-border-dark rounded-2xl p-5">
+          <textarea
+            id="config-editor"
+            spellcheck="false"
+            class="w-full min-h-[520px] bg-background-dark border border-border-dark rounded p-3 text-sm font-mono leading-6 focus:outline-none focus:border-primary"
+          ></textarea>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      (function () {
+        const params = new URLSearchParams(window.location.search);
+        const runId = params.get("run_id");
+        const configPathFromQuery = params.get("config_path");
+
+        const pathInput = document.getElementById("config-path");
+        const loadBtn = document.getElementById("config-load-btn");
+        const saveBtn = document.getElementById("config-save-btn");
+        const editor = document.getElementById("config-editor");
+        const msg = document.getElementById("config-message");
+
+        const metaExists = document.getElementById("config-meta-exists");
+        const metaSize = document.getElementById("config-meta-size");
+        const metaModified = document.getElementById("config-meta-modified");
+        const metaKeys = document.getElementById("config-meta-keys");
+
+        const links = {
+          setup: document.getElementById("config-open-setup"),
+          monitor: document.getElementById("config-open-monitor"),
+          results: document.getElementById("config-open-results"),
+          prep: document.getElementById("config-open-prep"),
+          settings: document.getElementById("config-open-settings"),
+        };
+
+        function withContext(path) {
+          const q = new URLSearchParams();
+          if (runId) q.set("run_id", runId);
+          const configPath = (pathInput && pathInput.value ? pathInput.value : "").trim();
+          if (configPath) q.set("config_path", configPath);
+          const suffix = q.toString();
+          return suffix ? path + "?" + suffix : path;
+        }
+
+        function syncLinks() {
+          if (links.setup) links.setup.href = withContext("/frontend/experiment-setup.html");
+          if (links.monitor) links.monitor.href = withContext("/frontend/live-monitor.html");
+          if (links.results) links.results.href = withContext("/frontend/results-analysis.html");
+          if (links.prep) links.prep.href = withContext("/frontend/data-preparation.html");
+          if (links.settings) links.settings.href = withContext("/frontend/settings-api.html");
+        }
+
+        function setMessage(text, isError) {
+          if (!msg) return;
+          msg.className = isError ? "text-xs text-red-300" : "text-xs text-text-subtle";
+          msg.textContent = text;
+        }
+
+        function applyPayload(data) {
+          if (metaExists) metaExists.textContent = String(!!data.exists);
+          if (metaSize) metaSize.textContent = String(data.size_bytes ?? "-");
+          if (metaModified) metaModified.textContent = data.modified_at_utc || "-";
+          if (metaKeys) metaKeys.textContent = JSON.stringify(data.top_level_keys || [], null, 2);
+          if (editor) editor.value = data.content || "";
+          if (pathInput && data.config_path) pathInput.value = data.config_path;
+        }
+
+        async function loadConfig() {
+          const configPath = (pathInput && pathInput.value ? pathInput.value : "config.yaml").trim() || "config.yaml";
+          try {
+            setMessage("Loading config...", false);
+            const res = await fetch("/settings/config?config_path=" + encodeURIComponent(configPath));
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Failed to load config");
+            applyPayload(data);
+            setMessage("Config loaded.", false);
+          } catch (error) {
+            setMessage("Load failed: " + String(error.message || error), true);
+          }
+        }
+
+        async function saveConfig() {
+          const configPath = (pathInput && pathInput.value ? pathInput.value : "config.yaml").trim() || "config.yaml";
+          const content = editor ? editor.value : "";
+          try {
+            setMessage("Saving config...", false);
+            const res = await fetch("/settings/config", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ config_path: configPath, content }),
+            });
+            const data = await res.json();
+            if (!res.ok || !data.ok) throw new Error(data.error || "Failed to save config");
+            applyPayload(data);
+            setMessage(data.message || "Config saved.", false);
+          } catch (error) {
+            setMessage("Save failed: " + String(error.message || error), true);
+          }
+        }
+
+        if (loadBtn) loadBtn.addEventListener("click", loadConfig);
+        if (saveBtn) saveBtn.addEventListener("click", saveConfig);
+        if (pathInput) {
+          pathInput.addEventListener("change", syncLinks);
+          if (configPathFromQuery) pathInput.value = configPathFromQuery;
+        }
+
+        syncLinks();
+        loadConfig();
+      })();
+    </script>
+  </body>
+</html>

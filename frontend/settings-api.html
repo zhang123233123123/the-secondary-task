@@ -152,6 +152,12 @@ python dev_server.py --port 8000</code></pre>
             class="block px-3 py-2 rounded-lg border border-border-dark text-text-subtle hover:text-white hover:bg-background-dark transition-colors"
             >Open Data Prep</a
           >
+          <a
+            id="settings-open-config"
+            href="/frontend/configuration.html"
+            class="block px-3 py-2 rounded-lg border border-border-dark text-text-subtle hover:text-white hover:bg-background-dark transition-colors"
+            >Open Config</a
+          >
         </aside>
       </main>
     </div>
@@ -173,6 +179,7 @@ python dev_server.py --port 8000</code></pre>
         const monitorLink = document.getElementById("settings-open-monitor");
         const resultsLink = document.getElementById("settings-open-results");
         const prepLink = document.getElementById("settings-open-prep");
+        const configLink = document.getElementById("settings-open-config");
 
         function withContext(path) {
           const q = new URLSearchParams();
@@ -187,6 +194,7 @@ python dev_server.py --port 8000</code></pre>
           if (monitorLink) monitorLink.href = withContext("/frontend/live-monitor.html");
           if (resultsLink) resultsLink.href = withContext("/frontend/results-analysis.html");
           if (prepLink) prepLink.href = withContext("/frontend/data-preparation.html");
+          if (configLink) configLink.href = withContext("/frontend/configuration.html");
         }
 
         function setBadge(configured) {

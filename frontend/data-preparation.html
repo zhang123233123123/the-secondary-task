@@ -72,6 +72,12 @@
             href="/frontend/settings-api.html"
             >API Key</a
           >
+          <a
+            id="prep-open-config"
+            class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white transition-colors text-xs"
+            href="/frontend/configuration.html"
+            >Config</a
+          >
         </div>
       </div>
     </header>
@@ -279,6 +285,7 @@
           monitorLink: document.getElementById("prep-open-monitor"),
           resultsLink: document.getElementById("prep-open-results"),
           settingsLink: document.getElementById("prep-open-settings"),
+          configLink: document.getElementById("prep-open-config"),
           configPath: document.getElementById("prep-config-path"),
           targetVersion: document.getElementById("prep-target-version"),
           startBtn: document.getElementById("prep-start-btn"),
@@ -328,6 +335,7 @@
           if (el.monitorLink) el.monitorLink.href = withContext("/frontend/live-monitor.html");
           if (el.resultsLink) el.resultsLink.href = withContext("/frontend/results-analysis.html");
           if (el.settingsLink) el.settingsLink.href = withContext("/frontend/settings-api.html");
+          if (el.configLink) el.configLink.href = withContext("/frontend/configuration.html");
         }
 
         function log(message) {

@@ -143,6 +143,35 @@ class DevRequestHandler(SimpleHTTPRequestHandler):
             "source": "process_env" if process_value else None,
         }
 
+    @staticmethod
+    def _config_editor_payload(root: Path, config_path: Path, fallback_path: str) -> dict:
+        if not config_path.exists():
+            return {
+                "config_path": fallback_path,
+                "exists": False,
+                "size_bytes": 0,
+                "modified_at_utc": None,
+                "content": "",
+                "top_level_keys": [],
+            }
+        content = config_path.read_text(encoding="utf-8")
+        parsed = yaml.safe_load(content)
+        top_level_keys: list[str] = []
+        if isinstance(parsed, dict):
+            top_level_keys = sorted(str(key) for key in parsed.keys())
+        stat = config_path.stat()
+        return {
+            "config_path": str(config_path.relative_to(root)),
+            "exists": True,
+            "size_bytes": stat.st_size,
+            "modified_at_utc": dt.datetime.fromtimestamp(
+                stat.st_mtime,
+                tz=dt.timezone.utc,
+            ).isoformat(),
+            "content": content,
+            "top_level_keys": top_level_keys,
+        }
+
     @classmethod
     def _missing_api_keys_for_roles(cls, config_payload: dict, roles: tuple[str, ...]) -> list[str]:
         required: set[str] = set()
@@ -559,6 +588,17 @@ class DevRequestHandler(SimpleHTTPRequestHandler):
         if parsed.path == "/settings/apikey/status":
             self._json_response(HTTPStatus.OK, self._settings_payload())
             return
+        if parsed.path == "/settings/config":
+            query = parse_qs(parsed.query)
+            config_path_raw = str(query.get("config_path", ["config.yaml"])[0])
+            try:
+                config_path = self._resolve_repo_path(root, config_path_raw)
+            except ValueError as exc:
+                self._json_response(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
+                return
+            payload = self._config_editor_payload(root, config_path, config_path_raw)
+            self._json_response(HTTPStatus.OK, payload)
+            return
         if parsed.path == "/runs":
             output_dir = root / "output"
             index_path = output_dir / "runs_index.json"
@@ -629,6 +669,52 @@ class DevRequestHandler(SimpleHTTPRequestHandler):
                     "message": "API key updated in current dev_server process.",
                     "required_env_key": self.deepseek_key_name,
                     **self._settings_payload(),
+                },
+            )
+            return
+        if self.path == "/settings/config":
+            try:
+                payload = self._read_json_body()
+            except json.JSONDecodeError:
+                self._json_response(HTTPStatus.BAD_REQUEST, {"error": "invalid json"})
+                return
+            root = Path(self.directory or ".").resolve()
+            config_path_raw = str(payload.get("config_path", "config.yaml"))
+            content = payload.get("content")
+            if not isinstance(content, str):
+                self._json_response(
+                    HTTPStatus.BAD_REQUEST,
+                    {"error": "content must be a string"},
+                )
+                return
+            try:
+                parsed_yaml = yaml.safe_load(content)
+            except yaml.YAMLError as exc:
+                self._json_response(
+                    HTTPStatus.BAD_REQUEST,
+                    {"error": f"invalid yaml: {exc}"},
+                )
+                return
+            if parsed_yaml is not None and not isinstance(parsed_yaml, dict):
+                self._json_response(
+                    HTTPStatus.BAD_REQUEST,
+                    {"error": "config yaml root must be an object"},
+                )
+                return
+            try:
+                config_path = self._resolve_repo_path(root, config_path_raw)
+            except ValueError as exc:
+                self._json_response(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
+                return
+            config_path.parent.mkdir(parents=True, exist_ok=True)
+            normalized_content = content if content.endswith("\n") else content + "\n"
+            config_path.write_text(normalized_content, encoding="utf-8")
+            self._json_response(
+                HTTPStatus.OK,
+                {
+                    "ok": True,
+                    "message": "Config file saved.",
+                    **self._config_editor_payload(root, config_path, config_path_raw),
                 },
             )
             return

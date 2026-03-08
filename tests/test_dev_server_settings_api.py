@@ -152,3 +152,65 @@ def test_run_start_rejects_missing_api_key(tmp_path):
         server.shutdown()
         server.server_close()
         thread.join(timeout=2)
+
+
+def test_settings_config_get_and_save(tmp_path):
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text("max_turns: 10\nresume_strategy: reconstruct\n", encoding="utf-8")
+
+    server, thread, base_url = _start_server(tmp_path)
+    try:
+        status_code, payload = _request_json(base_url, "/settings/config?config_path=config.yaml")
+        assert status_code == 200
+        assert payload["exists"] is True
+        assert payload["config_path"] == "config.yaml"
+        assert "max_turns: 10" in payload["content"]
+        assert "max_turns" in payload["top_level_keys"]
+
+        new_content = "max_turns: 5\nabort_on_error: false\n"
+        post_code, post_payload = _request_json(
+            base_url,
+            "/settings/config",
+            method="POST",
+            payload={"config_path": "config.yaml", "content": new_content},
+        )
+        assert post_code == 200
+        assert post_payload["ok"] is True
+        assert post_payload["content"] == new_content
+        assert (tmp_path / "config.yaml").read_text(encoding="utf-8") == new_content
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
+def test_settings_config_rejects_invalid_yaml(tmp_path):
+    server, thread, base_url = _start_server(tmp_path)
+    try:
+        status_code, payload = _request_json(
+            base_url,
+            "/settings/config",
+            method="POST",
+            payload={"config_path": "config.yaml", "content": "max_turns: [1,\n"},
+        )
+        assert status_code == 400
+        assert payload["error"].startswith("invalid yaml:")
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
+def test_settings_config_rejects_path_escape(tmp_path):
+    server, thread, base_url = _start_server(tmp_path)
+    try:
+        status_code, payload = _request_json(
+            base_url,
+            "/settings/config?config_path=../../etc/passwd",
+        )
+        assert status_code == 400
+        assert "path must stay inside repository root" in payload["error"]
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
