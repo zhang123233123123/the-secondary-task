@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>Data Preparation - StyleDrift Lab</title>
+    <title>数据准备 - StyleDrift Lab</title>
     <link href="https://fonts.googleapis.com" rel="preconnect" />
     <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
     <link
@@ -51,32 +51,32 @@
             Setup
           </a>
           <span class="text-border-dark">/</span>
-          <span class="text-white font-medium">Data Preparation</span>
+          <span class="text-white font-medium">数据准备</span>
         </div>
         <div class="flex items-center gap-2">
           <a
             id="prep-open-monitor"
             class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white transition-colors text-xs"
             href="/frontend/live-monitor.html"
-            >Monitor</a
+            >监控</a
           >
           <a
             id="prep-open-results"
             class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white transition-colors text-xs"
             href="/frontend/results-analysis.html"
-            >Results</a
+            >结果</a
           >
           <a
             id="prep-open-settings"
             class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white transition-colors text-xs"
             href="/frontend/settings-api.html"
-            >API Key</a
+            >API 密钥</a
           >
           <a
             id="prep-open-config"
             class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white transition-colors text-xs"
             href="/frontend/configuration.html"
-            >Config</a
+            >配置</a
           >
         </div>
       </div>
@@ -86,21 +86,21 @@
       <section class="rounded-2xl border border-border-dark bg-card-dark p-6 flex flex-col gap-4">
         <div class="flex items-center justify-between gap-4 flex-wrap">
           <div>
-            <h1 class="text-2xl font-bold">Offline Data Preparation Workspace</h1>
+            <h1 class="text-2xl font-bold">离线数据准备工作台</h1>
             <p class="text-text-subtle text-sm mt-1">
-              Run LLM1/LLM2 prepare pipeline, review candidates, approve to frozen versions, and activate in
+              运行 LLM1/LLM2 prepare pipeline, review candidates, approve to frozen versions, and activate in
               <span class="font-mono">config.yaml</span>.
             </p>
           </div>
           <div class="text-xs text-text-subtle font-mono">
-            task:
-            <span id="prep-current-task" class="text-white">idle</span>
+            任务：
+            <span id="prep-current-task" class="text-white">空闲</span>
           </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
           <label class="flex flex-col gap-1 md:col-span-2">
-            <span class="text-xs text-text-subtle">Config Path</span>
+            <span class="text-xs text-text-subtle">配置路径</span>
             <input
               id="prep-config-path"
               class="bg-background-dark border border-border-dark rounded px-3 py-2 text-sm font-mono"
@@ -108,7 +108,7 @@
             />
           </label>
           <label class="flex flex-col gap-1 md:col-span-2">
-            <span class="text-xs text-text-subtle">Target Version (Optional)</span>
+            <span class="text-xs text-text-subtle">目标版本（可选）</span>
             <input
               id="prep-target-version"
               class="bg-background-dark border border-border-dark rounded px-3 py-2 text-sm font-mono"
@@ -119,17 +119,17 @@
             id="prep-start-btn"
             class="h-[38px] rounded bg-primary hover:bg-blue-600 text-white font-semibold text-sm"
           >
-            Start Prepare
+            开始准备
           </button>
         </div>
         <div id="prep-status-msg" class="text-sm text-text-subtle">
-          Ready.
+          就绪。
         </div>
       </section>
 
       <section class="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <div class="rounded-2xl border border-border-dark bg-card-dark p-6 flex flex-col gap-3">
-          <h2 class="font-semibold">Prepare Manifest</h2>
+          <h2 class="font-semibold">准备清单</h2>
           <div class="text-xs text-text-subtle">
             manifest:
             <span id="prep-manifest-file" class="font-mono text-white">-</span>
@@ -153,25 +153,25 @@
         </div>
 
         <div class="rounded-2xl border border-border-dark bg-card-dark p-6 flex flex-col gap-4">
-          <h2 class="font-semibold">Frozen Index</h2>
+          <h2 class="font-semibold">冻结索引</h2>
           <div class="grid grid-cols-2 gap-3 text-xs">
             <div class="bg-background-dark border border-border-dark rounded p-3">
-              <div class="text-text-subtle">Active Prompts</div>
+              <div class="text-text-subtle">当前提示词版本</div>
               <div id="prep-active-prompts" class="font-mono mt-1">-</div>
             </div>
             <div class="bg-background-dark border border-border-dark rounded p-3">
-              <div class="text-text-subtle">Active Dialogues</div>
+              <div class="text-text-subtle">当前对话版本</div>
               <div id="prep-active-dialogues" class="font-mono mt-1">-</div>
             </div>
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <label class="flex flex-col gap-1">
-              <span class="text-xs text-text-subtle">Prompts Version</span>
+              <span class="text-xs text-text-subtle">提示词版本</span>
               <select id="prep-activate-prompts" class="bg-background-dark border border-border-dark rounded px-3 py-2 text-sm"></select>
             </label>
             <label class="flex flex-col gap-1">
-              <span class="text-xs text-text-subtle">Dialogues Version</span>
+              <span class="text-xs text-text-subtle">对话版本</span>
               <select id="prep-activate-dialogues" class="bg-background-dark border border-border-dark rounded px-3 py-2 text-sm"></select>
             </label>
           </div>
@@ -187,7 +187,7 @@
       <section class="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <div class="rounded-2xl border border-border-dark bg-card-dark p-6 flex flex-col gap-3">
           <div class="flex items-center justify-between">
-            <h2 class="font-semibold">Prompts Candidate (Read-only)</h2>
+            <h2 class="font-semibold">提示词候选（只读）</h2>
             <span id="prep-prompts-preview-file" class="text-xs font-mono text-text-subtle">-</span>
           </div>
           <pre
@@ -198,20 +198,20 @@
 
         <div class="rounded-2xl border border-border-dark bg-card-dark p-6 flex flex-col gap-3">
           <div class="flex items-center justify-between">
-            <h2 class="font-semibold">Dialogues Candidate Stats</h2>
+            <h2 class="font-semibold">对话候选统计</h2>
             <span id="prep-dialogues-preview-file" class="text-xs font-mono text-text-subtle">-</span>
           </div>
           <div class="grid grid-cols-2 gap-3 text-xs">
             <div class="bg-background-dark border border-border-dark rounded p-3">
-              <div class="text-text-subtle">Total</div>
+              <div class="text-text-subtle">总数</div>
               <div id="prep-dialogues-total" class="font-mono mt-1">-</div>
             </div>
             <div class="bg-background-dark border border-border-dark rounded p-3">
-              <div class="text-text-subtle">Invalid Rows</div>
+              <div class="text-text-subtle">无效行</div>
               <div id="prep-dialogues-invalid" class="font-mono mt-1">-</div>
             </div>
             <div class="bg-background-dark border border-border-dark rounded p-3 col-span-2">
-              <div class="text-text-subtle">Domain Counts</div>
+              <div class="text-text-subtle">领域分布</div>
               <div id="prep-dialogues-domain" class="font-mono mt-1 break-all">-</div>
             </div>
           </div>
@@ -224,42 +224,42 @@
 
       <section class="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <div class="rounded-2xl border border-border-dark bg-card-dark p-6 flex flex-col gap-3">
-          <h3 class="font-semibold">Approve Prompts</h3>
-          <label class="text-xs text-text-subtle">Version</label>
+          <h3 class="font-semibold">批准提示词</h3>
+          <label class="text-xs text-text-subtle">版本</label>
           <input id="prep-approve-prompts-version" class="bg-background-dark border border-border-dark rounded px-3 py-2 text-sm font-mono" />
-          <label class="text-xs text-text-subtle">Reviewer</label>
+          <label class="text-xs text-text-subtle">审核人</label>
           <input id="prep-approve-prompts-reviewer" class="bg-background-dark border border-border-dark rounded px-3 py-2 text-sm" />
-          <label class="text-xs text-text-subtle">Note</label>
+          <label class="text-xs text-text-subtle">备注</label>
           <input id="prep-approve-prompts-note" class="bg-background-dark border border-border-dark rounded px-3 py-2 text-sm" />
           <label class="inline-flex items-center gap-2 text-xs text-text-subtle">
             <input id="prep-approve-prompts-activate" type="checkbox" class="rounded border-border-dark bg-background-dark" />
             Activate after approve
           </label>
           <button id="prep-approve-prompts-btn" class="rounded bg-primary hover:bg-blue-600 px-3 py-2 text-sm font-semibold">
-            Approve Prompts
+            批准提示词
           </button>
         </div>
 
         <div class="rounded-2xl border border-border-dark bg-card-dark p-6 flex flex-col gap-3">
-          <h3 class="font-semibold">Approve Dialogues</h3>
-          <label class="text-xs text-text-subtle">Version</label>
+          <h3 class="font-semibold">批准对话</h3>
+          <label class="text-xs text-text-subtle">版本</label>
           <input id="prep-approve-dialogues-version" class="bg-background-dark border border-border-dark rounded px-3 py-2 text-sm font-mono" />
-          <label class="text-xs text-text-subtle">Reviewer</label>
+          <label class="text-xs text-text-subtle">审核人</label>
           <input id="prep-approve-dialogues-reviewer" class="bg-background-dark border border-border-dark rounded px-3 py-2 text-sm" />
-          <label class="text-xs text-text-subtle">Note</label>
+          <label class="text-xs text-text-subtle">备注</label>
           <input id="prep-approve-dialogues-note" class="bg-background-dark border border-border-dark rounded px-3 py-2 text-sm" />
           <label class="inline-flex items-center gap-2 text-xs text-text-subtle">
             <input id="prep-approve-dialogues-activate" type="checkbox" class="rounded border-border-dark bg-background-dark" />
             Activate after approve
           </label>
           <button id="prep-approve-dialogues-btn" class="rounded bg-primary hover:bg-blue-600 px-3 py-2 text-sm font-semibold">
-            Approve Dialogues
+            批准对话
           </button>
         </div>
       </section>
 
       <section class="rounded-2xl border border-border-dark bg-card-dark p-6">
-        <h3 class="font-semibold mb-3">Operation Log</h3>
+        <h3 class="font-semibold mb-3">操作日志</h3>
         <pre
           id="prep-op-log"
           class="bg-background-dark border border-border-dark rounded p-3 text-xs font-mono text-text-subtle overflow-auto max-h-[220px]"
@@ -290,7 +290,7 @@
           targetVersion: document.getElementById("prep-target-version"),
           startBtn: document.getElementById("prep-start-btn"),
           statusMsg: document.getElementById("prep-status-msg"),
-          task: document.getElementById("prep-current-task"),
+          任务： document.getElementById("prep-current-task"),
           manifestFile: document.getElementById("prep-manifest-file"),
           prepareId: document.getElementById("prep-prepare-id"),
           promptsCandidate: document.getElementById("prep-prompts-candidate"),
@@ -377,7 +377,7 @@
           if (el.activatePrompts) {
             const active = data?.active?.prompts_version || "";
             el.activatePrompts.innerHTML =
-              '<option value="">Select prompts version</option>' +
+              '<option value="">选择提示词版本</option>' +
               (data?.prompts_versions || [])
                 .map(function (item) {
                   const v = String(item.version || "");
@@ -389,7 +389,7 @@
           if (el.activateDialogues) {
             const active = data?.active?.dialogues_version || "";
             el.activateDialogues.innerHTML =
-              '<option value="">Select dialogues version</option>' +
+              '<option value="">选择对话版本</option>' +
               (data?.dialogues_versions || [])
                 .map(function (item) {
                   const v = String(item.version || "");

@@ -4,7 +4,7 @@
   <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>StyleDrift Lab - API Key Settings</title>
+    <title>StyleDrift Lab - API 密钥设置</title>
     <link href="https://fonts.googleapis.com" rel="preconnect" />
     <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
     <link
@@ -52,37 +52,37 @@
       <header class="flex items-center justify-between gap-4 border-b border-border-dark pb-5">
         <div class="space-y-1">
           <p class="text-xs text-text-subtle uppercase tracking-wide">StyleDrift Lab</p>
-          <h1 class="text-3xl font-bold tracking-tight">API Key Settings</h1>
+          <h1 class="text-3xl font-bold tracking-tight">API 密钥设置</h1>
           <p class="text-sm text-text-subtle">
-            Configure local inference credentials for this project.
+            为本项目配置本地推理凭据。
           </p>
         </div>
         <div id="settings-status-badge" class="px-3 py-1 rounded-full text-xs font-mono border">
-          Checking...
+          检查中...
         </div>
       </header>
 
       <main class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <section class="md:col-span-2 bg-card-dark border border-border-dark rounded-2xl p-6 space-y-5">
           <div class="space-y-1">
-            <h2 class="text-lg font-semibold">DeepSeek API Key</h2>
+            <h2 class="text-lg font-semibold">DeepSeek API 密钥</h2>
             <p class="text-xs text-text-subtle">
-              Runtime now reads from process environment only.
+              当前仅从进程环境变量读取。
             </p>
           </div>
 
           <div class="space-y-2">
-            <label class="text-sm text-white">Required Environment Variable</label>
+            <label class="text-sm text-white">必填环境变量</label>
             <div class="bg-background-dark border border-border-dark rounded-lg py-2.5 px-3 text-sm font-mono">
               DEEPSEEK_API_KEY
             </div>
             <p class="text-xs text-text-subtle">
-              Current (masked): <span id="settings-masked-value" class="font-mono">-</span>
+              当前(脱敏)： <span id="settings-masked-value" class="font-mono">-</span>
             </p>
           </div>
 
           <div class="space-y-2">
-            <label class="text-sm text-white" for="settings-key-input">Set Key in This Session</label>
+            <label class="text-sm text-white" for="settings-key-input">在当前会话设置密钥</label>
             <input
               id="settings-key-input"
               type="password"
@@ -91,8 +91,8 @@
               class="w-full bg-background-dark border border-border-dark rounded-lg py-2.5 px-3 text-sm font-mono focus:outline-none focus:border-primary"
             />
             <p class="text-xs text-text-subtle">
-              This writes to the current <span class="font-mono">dev_server.py</span> process environment only.
-              Restarting the service clears it unless you export in shell.
+              仅写入当前 <span class="font-mono">dev_server.py</span> 进程环境变量。
+              除非在 shell 中导出，否则重启服务会清空。
             </p>
             <pre class="bg-background-dark border border-border-dark rounded-lg p-3 text-xs font-mono overflow-x-auto"><code>export DEEPSEEK_API_KEY="your_key_here"
 python dev_server.py --port 8000</code></pre>
@@ -104,59 +104,59 @@ python dev_server.py --port 8000</code></pre>
               type="button"
               class="px-5 py-2.5 rounded-lg bg-primary hover:bg-primary-dark text-white text-sm font-semibold transition-colors"
             >
-              Save Key
+              保存 Key
             </button>
             <button
               id="settings-clear-btn"
               type="button"
               class="px-5 py-2.5 rounded-lg border border-border-dark text-red-300 hover:text-red-200 hover:bg-background-dark text-sm transition-colors"
             >
-              Clear Key
+              清空密钥
             </button>
             <button
               id="settings-refresh-btn"
               type="button"
               class="px-5 py-2.5 rounded-lg border border-border-dark text-text-subtle hover:text-white hover:bg-background-dark text-sm transition-colors"
             >
-              Refresh Status
+              刷新状态
             </button>
           </div>
           <div id="settings-message" class="text-sm text-text-subtle">
-            Waiting for action...
+            等待操作...
           </div>
         </section>
 
         <aside class="bg-card-dark border border-border-dark rounded-2xl p-6 space-y-4">
-          <h3 class="text-sm font-semibold uppercase tracking-wide text-text-subtle">Navigation</h3>
+          <h3 class="text-sm font-semibold uppercase tracking-wide text-text-subtle">导航</h3>
           <a
             id="settings-open-setup"
             href="/frontend/experiment-setup.html"
             class="block px-3 py-2 rounded-lg border border-border-dark text-text-subtle hover:text-white hover:bg-background-dark transition-colors"
-            >Open Setup</a
+            >打开配置</a
           >
           <a
             id="settings-open-monitor"
             href="/frontend/live-monitor.html"
             class="block px-3 py-2 rounded-lg border border-border-dark text-text-subtle hover:text-white hover:bg-background-dark transition-colors"
-            >Open Monitor</a
+            >打开监控</a
           >
           <a
             id="settings-open-results"
             href="/frontend/results-analysis.html"
             class="block px-3 py-2 rounded-lg border border-border-dark text-text-subtle hover:text-white hover:bg-background-dark transition-colors"
-            >Open Results</a
+            >打开结果</a
           >
           <a
             id="settings-open-prep"
             href="/frontend/data-preparation.html"
             class="block px-3 py-2 rounded-lg border border-border-dark text-text-subtle hover:text-white hover:bg-background-dark transition-colors"
-            >Open Data Prep</a
+            >打开数据准备</a
           >
           <a
             id="settings-open-config"
             href="/frontend/configuration.html"
             class="block px-3 py-2 rounded-lg border border-border-dark text-text-subtle hover:text-white hover:bg-background-dark transition-colors"
-            >Open Config</a
+            >打开配置编辑</a
           >
         </aside>
       </main>
@@ -204,7 +204,7 @@ python dev_server.py --port 8000</code></pre>
             (configured
               ? "bg-green-500/10 border-green-500/30 text-green-400"
               : "bg-red-500/10 border-red-500/30 text-red-300");
-          badge.textContent = configured ? "Configured" : "Not Configured";
+          badge.textContent = configured ? "已配置" : "未配置";
         }
 
         async function refreshStatus() {
@@ -220,7 +220,7 @@ python dev_server.py --port 8000</code></pre>
                 : "API key is missing in process environment.";
             }
           } catch (error) {
-            if (msg) msg.textContent = "Status check failed: " + String(error.message || error);
+            if (msg) msg.textContent = "状态 check failed: " + String(error.message || error);
             setBadge(false);
           }
         }
@@ -244,7 +244,7 @@ python dev_server.py --port 8000</code></pre>
             if (msg) msg.textContent = data.message || "API key saved.";
             await refreshStatus();
           } catch (error) {
-            if (msg) msg.textContent = "Save failed: " + String(error.message || error);
+            if (msg) msg.textContent = "保存 failed: " + String(error.message || error);
           }
         }
 

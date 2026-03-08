@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>StyleDrift Lab - Config Editor</title>
+    <title>StyleDrift Lab - 配置编辑器</title>
     <link href="https://fonts.googleapis.com" rel="preconnect" />
     <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
     <link
@@ -44,36 +44,36 @@
       <header class="flex flex-wrap items-end justify-between gap-4 border-b border-border-dark pb-5">
         <div class="space-y-1">
           <p class="text-xs text-text-subtle uppercase tracking-wide">StyleDrift Lab</p>
-          <h1 class="text-3xl font-bold tracking-tight">Configuration Editor</h1>
-          <p class="text-sm text-text-subtle">Read and save <span class="font-mono">config.yaml</span> from browser.</p>
+          <h1 class="text-3xl font-bold tracking-tight">配置编辑器</h1>
+          <p class="text-sm text-text-subtle">在浏览器中读取并保存 <span class="font-mono">config.yaml</span>。</p>
         </div>
         <div class="flex items-center gap-2 text-xs">
-          <a id="config-open-setup" href="/frontend/experiment-setup.html" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white">Setup</a>
-          <a id="config-open-monitor" href="/frontend/live-monitor.html" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white">Monitor</a>
-          <a id="config-open-results" href="/frontend/results-analysis.html" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white">Results</a>
-          <a id="config-open-prep" href="/frontend/data-preparation.html" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white">Data Prep</a>
-          <a id="config-open-settings" href="/frontend/settings-api.html" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white">API Key</a>
+          <a id="config-open-setup" href="/frontend/experiment-setup.html" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white">配置</a>
+          <a id="config-open-monitor" href="/frontend/live-monitor.html" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white">监控</a>
+          <a id="config-open-results" href="/frontend/results-analysis.html" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white">结果</a>
+          <a id="config-open-prep" href="/frontend/data-preparation.html" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white">数据准备</a>
+          <a id="config-open-settings" href="/frontend/settings-api.html" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white">API 密钥</a>
         </div>
       </header>
 
       <section class="bg-card-dark border border-border-dark rounded-2xl p-6 grid grid-cols-1 lg:grid-cols-4 gap-4 items-end">
         <label class="lg:col-span-2 flex flex-col gap-1">
-          <span class="text-xs text-text-subtle">Config Path</span>
+          <span class="text-xs text-text-subtle">配置路径</span>
           <input id="config-path" class="bg-background-dark border border-border-dark rounded px-3 py-2 text-sm font-mono" value="config.yaml" />
         </label>
-        <button id="config-load-btn" class="h-[38px] rounded bg-primary hover:bg-primary-dark text-white text-sm font-semibold">Load</button>
-        <button id="config-save-btn" class="h-[38px] rounded border border-border-dark bg-background-dark hover:bg-slate-800 text-sm font-semibold">Save</button>
+        <button id="config-load-btn" class="h-[38px] rounded bg-primary hover:bg-primary-dark text-white text-sm font-semibold">加载</button>
+        <button id="config-save-btn" class="h-[38px] rounded border border-border-dark bg-background-dark hover:bg-slate-800 text-sm font-semibold">保存</button>
       </section>
 
       <section class="grid grid-cols-1 xl:grid-cols-4 gap-6">
         <aside class="xl:col-span-1 bg-card-dark border border-border-dark rounded-2xl p-5 space-y-3">
-          <h2 class="text-sm font-semibold uppercase tracking-wide text-text-subtle">Metadata</h2>
-          <div class="text-xs text-text-subtle">exists: <span id="config-meta-exists" class="text-white font-mono">-</span></div>
-          <div class="text-xs text-text-subtle">size_bytes: <span id="config-meta-size" class="text-white font-mono">-</span></div>
-          <div class="text-xs text-text-subtle">modified_at_utc: <span id="config-meta-modified" class="text-white font-mono">-</span></div>
-          <div class="text-xs text-text-subtle">top_keys:</div>
+          <h2 class="text-sm font-semibold uppercase tracking-wide text-text-subtle">元数据</h2>
+          <div class="text-xs text-text-subtle">是否存在： <span id="config-meta-exists" class="text-white font-mono">-</span></div>
+          <div class="text-xs text-text-subtle">文件大小(字节)： <span id="config-meta-size" class="text-white font-mono">-</span></div>
+          <div class="text-xs text-text-subtle">修改时间(UTC)： <span id="config-meta-modified" class="text-white font-mono">-</span></div>
+          <div class="text-xs text-text-subtle">顶层键：</div>
           <pre id="config-meta-keys" class="bg-background-dark border border-border-dark rounded p-2 text-xs font-mono text-text-subtle overflow-auto max-h-[180px]">-</pre>
-          <div id="config-message" class="text-xs text-text-subtle">Ready.</div>
+          <div id="config-message" class="text-xs text-text-subtle">就绪。</div>
         </aside>
 
         <div class="xl:col-span-3 bg-card-dark border border-border-dark rounded-2xl p-5">
@@ -146,14 +146,14 @@
         async function loadConfig() {
           const configPath = (pathInput && pathInput.value ? pathInput.value : "config.yaml").trim() || "config.yaml";
           try {
-            setMessage("Loading config...", false);
+            setMessage("正在加载配置...", false);
             const res = await fetch("/settings/config?config_path=" + encodeURIComponent(configPath));
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || "Failed to load config");
             applyPayload(data);
-            setMessage("Config loaded.", false);
+            setMessage("配置已加载。", false);
           } catch (error) {
-            setMessage("Load failed: " + String(error.message || error), true);
+            setMessage("加载 failed: " + String(error.message || error), true);
           }
         }
 
@@ -161,7 +161,7 @@
           const configPath = (pathInput && pathInput.value ? pathInput.value : "config.yaml").trim() || "config.yaml";
           const content = editor ? editor.value : "";
           try {
-            setMessage("Saving config...", false);
+            setMessage("正在保存配置...", false);
             const res = await fetch("/settings/config", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -170,9 +170,9 @@
             const data = await res.json();
             if (!res.ok || !data.ok) throw new Error(data.error || "Failed to save config");
             applyPayload(data);
-            setMessage(data.message || "Config saved.", false);
+            setMessage(data.message || "配置已保存。", false);
           } catch (error) {
-            setMessage("Save failed: " + String(error.message || error), true);
+            setMessage("保存 failed: " + String(error.message || error), true);
           }
         }
 

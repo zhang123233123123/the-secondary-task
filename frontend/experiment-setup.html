@@ -4,7 +4,7 @@
   <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>Experiment Configuration Setup</title>
+    <title>实验配置设置</title>
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com" rel="preconnect" />
     <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
@@ -134,12 +134,12 @@
               id="setup-nav-exp"
               class="text-text-subtle hover:text-primary transition-colors"
               href="/frontend/results-analysis.html"
-              >Experiments</a
+              >实验</a
             >
             <span class="text-border-dark">/</span>
             <span
               class="text-white font-medium bg-card-dark px-2 py-0.5 rounded text-xs border border-border-dark"
-              >New Run</span
+              >新运行</span
             >
           </div>
         </div>
@@ -153,11 +153,10 @@
         >
           <div class="flex flex-col gap-2">
             <h1 class="text-3xl md:text-4xl font-bold tracking-tight text-white">
-              New Experiment Run
+              新建实验运行
             </h1>
             <p class="text-text-subtle text-base max-w-2xl">
-              Configure parameters for style drift analysis. Define datasets,
-              select models, and set execution constraints.
+              配置风格漂移分析参数：定义数据集、选择模型并设置执行约束。
             </p>
           </div>
           <div class="flex items-center gap-2">
@@ -169,48 +168,48 @@
               id="setup-open-monitor-top"
               class="px-3 py-1 rounded-full bg-card-dark text-text-subtle text-xs border border-border-dark hover:text-white transition-colors"
               href="/frontend/live-monitor.html"
-              >Monitor</a
+              >监控</a
             >
             <a
               id="setup-open-results-top"
               class="px-3 py-1 rounded-full bg-card-dark text-text-subtle text-xs border border-border-dark hover:text-white transition-colors"
               href="/frontend/results-analysis.html"
-              >Results</a
+              >结果</a
             >
             <a
               id="setup-open-settings-top"
               class="px-3 py-1 rounded-full bg-card-dark text-text-subtle text-xs border border-border-dark hover:text-white transition-colors"
               href="/frontend/settings-api.html"
-              >Settings</a
+              >设置</a
             >
             <a
               id="setup-open-prep-top"
               class="px-3 py-1 rounded-full bg-card-dark text-text-subtle text-xs border border-border-dark hover:text-white transition-colors"
               href="/frontend/data-preparation.html"
-              >Data Prep</a
+              >数据准备</a
             >
             <a
               id="setup-open-config-top"
               class="px-3 py-1 rounded-full bg-card-dark text-text-subtle text-xs border border-border-dark hover:text-white transition-colors"
               href="/frontend/configuration.html"
-              >Config</a
+              >配置</a
             >
           </div>
         </div>
         <!-- Content Grid -->
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          <!-- Left Column: Assets (4 columns wide on large screens) -->
+          <!-- Left Column: 资源文件 (4 columns wide on large screens) -->
           <div class="lg:col-span-5 flex flex-col gap-6">
             <div>
               <h2 class="text-xl font-semibold text-white mb-1 flex items-center gap-2">
                 <span class="material-symbols-outlined text-primary">folder_open</span>
-                Assets
+                资源文件
               </h2>
               <p class="text-text-subtle text-sm mb-4">
                 Upload the required datasets for this experiment run.
               </p>
             </div>
-            <!-- File Drop Zone 1: Dialogue Dataset -->
+            <!-- File Drop Zone 1: 对话数据集 -->
             <div
               class="group relative flex flex-col gap-3 rounded-xl border border-dashed border-border-dark bg-card-dark/50 p-6 hover:border-primary/50 hover:bg-card-dark transition-all cursor-pointer"
             >
@@ -223,7 +222,7 @@
                     <span id="setup-dialogues-icon" class="material-symbols-outlined">check_circle</span>
                   </div>
                   <div>
-                    <h3 class="text-white font-medium text-sm">Dialogue Dataset</h3>
+                    <h3 class="text-white font-medium text-sm">对话数据集</h3>
                     <p id="setup-dialogues-name" class="text-text-subtle text-xs font-mono mt-0.5">
                       dialogues.jsonl
                     </p>
@@ -238,10 +237,10 @@
               </div>
               <div class="flex justify-between text-xs text-text-subtle font-mono">
                 <span id="setup-dialogues-size">-</span>
-                <span id="setup-dialogues-status">Checking...</span>
+                <span id="setup-dialogues-status">检查中...</span>
               </div>
             </div>
-            <!-- File Drop Zone 2: System Prompts -->
+            <!-- File Drop Zone 2: 系统提示词 -->
             <div
               class="group relative flex flex-col gap-3 rounded-xl border border-dashed border-border-dark bg-card-dark/50 p-6 hover:border-primary/50 hover:bg-card-dark transition-all cursor-pointer"
             >
@@ -254,7 +253,7 @@
                     <span id="setup-prompts-icon" class="material-symbols-outlined">check_circle</span>
                   </div>
                   <div>
-                    <h3 class="text-white font-medium text-sm">System Prompts</h3>
+                    <h3 class="text-white font-medium text-sm">系统提示词</h3>
                     <p id="setup-prompts-name" class="text-text-subtle text-xs font-mono mt-0.5">prompts.json</p>
                   </div>
                 </div>
@@ -267,7 +266,7 @@
               </div>
               <div class="flex justify-between text-xs text-text-subtle font-mono">
                 <span id="setup-prompts-size">-</span>
-                <span id="setup-prompts-status">Checking...</span>
+                <span id="setup-prompts-status">检查中...</span>
               </div>
             </div>
             <!-- Additional Upload Placeholder -->
@@ -281,14 +280,14 @@
               </p>
             </div>
           </div>
-          <!-- Right Column: Configuration (7 columns wide) -->
+          <!-- Right Column: 配置 (7 columns wide) -->
           <div
             class="lg:col-span-7 flex flex-col gap-8 bg-card-dark rounded-2xl border border-border-dark p-6 md:p-8"
           >
             <div>
               <h2 class="text-xl font-semibold text-white mb-1 flex items-center gap-2">
                 <span class="material-symbols-outlined text-primary">tune</span>
-                Configuration
+                配置
               </h2>
               <p class="text-text-subtle text-sm">
                 Fine-tune the model parameters and execution strategy.
@@ -467,33 +466,33 @@
           >
             <div class="flex items-center gap-3 text-sm text-text-subtle">
               <span class="material-symbols-outlined text-green-500">check_circle</span>
-              <span id="setup-status-text">Configuration valid. Ready to initialize.</span>
+              <span id="setup-status-text">配置有效，可开始运行。</span>
             </div>
             <div class="flex gap-3 w-full sm:w-auto">
               <label class="flex items-center gap-2 text-xs text-text-subtle px-2">
                 <input id="dry-run-checkbox" type="checkbox" class="rounded border-border-dark bg-background-dark" />
-                Dry Run
+                冒烟运行
               </label>
               <button
                 id="setup-save-draft-btn"
                 class="px-6 py-3 rounded-lg border border-border-dark bg-background-dark text-white font-medium hover:bg-card-dark transition-colors w-full sm:w-auto"
               >
-                Save Draft
+                保存 Draft
               </button>
               <button
                 id="initialize-run-btn"
                 class="px-8 py-3 rounded-lg bg-primary hover:bg-primary-dark text-white font-bold shadow-lg shadow-primary/20 transition-all active:scale-[0.98] w-full sm:w-auto flex items-center justify-center gap-2"
               >
                 <span class="material-symbols-outlined">play_arrow</span>
-                Initialize Run
+                开始运行
               </button>
             </div>
             <div id="setup-run-links" class="flex items-center gap-2 text-xs">
-              <a id="setup-open-monitor" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white" href="/frontend/live-monitor.html">Open Monitor</a>
-              <a id="setup-open-results" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white" href="/frontend/results-analysis.html">Open Results</a>
-              <a id="setup-open-settings" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white" href="/frontend/settings-api.html">API Key Settings</a>
-              <a id="setup-open-prep" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white" href="/frontend/data-preparation.html">Data Prep</a>
-              <a id="setup-open-config" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white" href="/frontend/configuration.html">Config Editor</a>
+              <a id="setup-open-monitor" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white" href="/frontend/live-monitor.html">打开监控</a>
+              <a id="setup-open-results" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white" href="/frontend/results-analysis.html">打开结果</a>
+              <a id="setup-open-settings" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white" href="/frontend/settings-api.html">API 密钥设置</a>
+              <a id="setup-open-prep" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white" href="/frontend/data-preparation.html">数据准备</a>
+              <a id="setup-open-config" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white" href="/frontend/configuration.html">配置编辑器</a>
             </div>
           </div>
         </div>
@@ -686,7 +685,7 @@
             if (statusText) {
               statusText.textContent = missing.length
                 ? "Missing input files: " + missing.join(", ")
-                : "Configuration valid. Ready to initialize.";
+                : "配置有效，可开始运行。";
             }
           } catch (error) {
             if (statusText) {
@@ -710,7 +709,7 @@
               const data = await response.json();
               if (statusText) {
                 statusText.innerHTML =
-                  'Run <span class="text-primary font-mono">' +
+                  '运行 <span class="text-primary font-mono">' +
                   runId +
                   "</span> status: " +
                   String(data.runtime_status || "unknown");
@@ -749,7 +748,7 @@
             }
           } catch (error) {
             if (statusText) {
-              statusText.textContent = "Save draft failed: " + String(error.message || error);
+              statusText.textContent = "保存 draft failed: " + String(error.message || error);
             }
           } finally {
             saveDraftBtn.disabled = false;
@@ -762,7 +761,7 @@
           stopStatusPolling();
           startBtn.disabled = true;
           startBtn.classList.add("opacity-60", "cursor-not-allowed");
-          if (statusText) statusText.textContent = "Starting run...";
+          if (statusText) statusText.textContent = "正在启动运行...";
 
           try {
             const keyStatusResp = await fetch("/settings/apikey/status");
@@ -771,9 +770,9 @@
             if (!keyStatus.configured) {
               const settingsUrl = withRunId("/frontend/settings-api.html", currentRunId);
               throw new Error(
-                'Missing API key. Configure it in <a class="text-primary underline" href="' +
+                '缺少 API 密钥。请先在 <a class="text-primary underline" href="' +
                   settingsUrl +
-                  '">API Key Settings</a> first.',
+                  '">API 密钥设置</a> first.',
               );
             }
 
@@ -793,16 +792,16 @@
                 throw new Error(
                   "Missing key(s): " +
                     data.missing_api_keys.join(", ") +
-                    '. Configure in <a class="text-primary underline" href="' +
+                    '。请在 <a class="text-primary underline" href="' +
                     settingsUrl +
-                    '">API Key Settings</a>.',
+                    '">API 密钥设置</a>.',
                 );
               }
               throw new Error(data.error || "Failed to start run");
             }
             if (statusText) {
               statusText.innerHTML =
-                'Run started: <span class="text-primary font-mono">' + data.run_id + "</span>. Redirecting to Monitor...";
+                '运行已启动： <span class="text-primary font-mono">' + data.run_id + "</span>. 正在跳转到监控页...";
             }
             currentRunId = data.run_id;
             syncLinks(currentRunId);
@@ -813,7 +812,7 @@
             }, 1000);
           } catch (error) {
             if (statusText) {
-              statusText.innerHTML = "Start failed: " + String(error.message || error);
+              statusText.innerHTML = "启动失败： " + String(error.message || error);
             }
           } finally {
             startBtn.disabled = false;
