@@ -10,9 +10,9 @@ from typing import Any
 
 from .frozen_registry import find_approved_version_for_file
 from .input_loader import Dialogue, PromptsBundle, compute_sha256, load_dialogues, load_prompts
+from .llm_client_factory import build_chat_client
 from .llm_clients import (
     LLMError,
-    OpenAICompatibleChatClient,
     detect_refusal,
     parse_judge_json,
 )
@@ -23,7 +23,7 @@ from .runs_index import write_runs_index
 from .schema_validation import validate_with_simple_schema
 from .runtime_config import RuntimeConfig
 
-CONDITIONS_ORDER = ("default", "evil", "distant")
+CONDITIONS_ORDER = ("default", "unhelpful", "cynical", "distant")
 
 
 @dataclass
@@ -215,8 +215,8 @@ def run_experiment(
 
     writer = JsonlWriter(config.output_dir, actual_run_id, config.flush_policy)
     resume_state = load_resume_state(writer.results_path)
-    llm3_client = OpenAICompatibleChatClient(config.llm3)
-    llm4_client = OpenAICompatibleChatClient(config.llm4)
+    llm3_client = build_chat_client(config.llm3)
+    llm4_client = build_chat_client(config.llm4)
     abort_reason: str | None = None
 
     try:
@@ -334,10 +334,14 @@ def run_experiment(
                         "gen_latency_ms": gen_latency_ms,
                         "judge_latency_ms": judge_latency_ms,
                         "llm3_model": config.llm3.model,
+                        "llm3_provider": config.llm3.provider,
+                        "llm4_provider": config.llm4.provider,
                         "llm3_params": {
                             "temperature": config.llm3.temperature,
                             "top_p": config.llm3.top_p,
                             "seed": config.llm3.seed,
+                            "max_new_tokens": config.llm3.max_new_tokens,
+                            "load_in_4bit": config.llm3.load_in_4bit,
                         },
                         "resume_strategy": config.resume_strategy,
                         "input_schema_variant": dialogue.input_schema_variant,

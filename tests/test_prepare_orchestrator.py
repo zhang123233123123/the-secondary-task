@@ -56,7 +56,7 @@ def test_prepare_inputs_writes_valid_candidates(tmp_path, monkeypatch):
             return ChatResult(
                 text=json.dumps(
                     {
-                        "conditions": {"default": "d", "evil": "e", "distant": "x"},
+                        "conditions": {"default": "d", "unhelpful": "e", "cynical": "c", "distant": "x"},
                         "judge_system": "judge",
                         "judge_rubric": "rubric",
                         "judge_schema": {

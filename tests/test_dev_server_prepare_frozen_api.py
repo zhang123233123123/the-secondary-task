@@ -90,7 +90,7 @@ def test_prepare_start_status_and_candidate_reads(tmp_path, monkeypatch):
         prompts_candidate = candidates_dir / f"prompts_candidate_{prepare_id}.json"
         dialogues_candidate = candidates_dir / f"dialogues_candidate_{prepare_id}.jsonl"
         prompts_payload = {
-            "conditions": {"default": "d", "evil": "e", "distant": "x"},
+            "conditions": {"default": "d", "unhelpful": "e", "cynical": "c", "distant": "x"},
             "judge_system": "judge",
             "judge_rubric": "rubric",
             "judge_schema": {"type": "object"},
@@ -173,7 +173,7 @@ def test_prepare_start_status_and_candidate_reads(tmp_path, monkeypatch):
             "/prepare/candidate/prompts?file=" + request.quote(prompts_file, safe=""),
         )
         assert status_code == 200
-        assert prompts_payload["content"]["conditions"]["evil"] == "e"
+        assert prompts_payload["content"]["conditions"]["unhelpful"] == "e"
 
         status_code, dialogues_payload = _request_json(
             base_url,
@@ -197,7 +197,7 @@ def test_frozen_approve_and_use_endpoints(tmp_path, monkeypatch):
     prompts_candidate.write_text(
         json.dumps(
             {
-                "conditions": {"default": "d", "evil": "e", "distant": "x"},
+                "conditions": {"default": "d", "unhelpful": "e", "cynical": "c", "distant": "x"},
                 "judge_system": "judge",
                 "judge_rubric": "rubric",
                 "judge_schema": {"type": "object"},
@@ -277,4 +277,3 @@ def test_frozen_approve_and_use_endpoints(tmp_path, monkeypatch):
         server.shutdown()
         server.server_close()
         thread.join(timeout=2)
-

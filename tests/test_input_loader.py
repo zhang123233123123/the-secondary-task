@@ -57,7 +57,7 @@ def test_load_prompts_requires_all_conditions(tmp_path):
     prompts_path.write_text(
         json.dumps(
             {
-                "conditions": {"default": "ok", "evil": "ok"},
+                "conditions": {"default": "ok", "unhelpful": "ok"},
                 "judge_system": "judge",
                 "judge_rubric": "rubric",
                 "judge_schema": {},
@@ -66,5 +66,5 @@ def test_load_prompts_requires_all_conditions(tmp_path):
         encoding="utf-8",
     )
 
-    with pytest.raises(ValueError, match="conditions.distant"):
+    with pytest.raises(ValueError, match="conditions.cynical"):
         load_prompts(prompts_path)

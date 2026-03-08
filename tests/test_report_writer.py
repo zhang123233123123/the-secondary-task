@@ -10,7 +10,7 @@ def test_write_report_creates_markdown_summary(tmp_path):
         "\n".join(
             [
                 '{"dialogue_id":"D1","condition":"default","turn_index":1,"error_stage":null}',
-                '{"dialogue_id":"D1","condition":"evil","turn_index":1,"error_stage":"generate"}',
+                '{"dialogue_id":"D1","condition":"unhelpful","turn_index":1,"error_stage":"generate"}',
             ]
         )
         + "\n",
@@ -66,4 +66,4 @@ def test_write_report_creates_markdown_summary(tmp_path):
     assert "## Input Freeze Provenance" in report
     assert "prompts_version: `p1`" in report
     assert "dialogues_version: `d1`" in report
-    assert "D1 / evil / turn=1 / error=generate" in report
+    assert "D1 / unhelpful / turn=1 / error=generate" in report

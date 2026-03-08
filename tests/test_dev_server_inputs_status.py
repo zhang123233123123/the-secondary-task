@@ -41,7 +41,7 @@ def test_inputs_status_uses_paths_from_config(tmp_path):
     (data_dir / "prompts.json").write_text(
         json.dumps(
             {
-                "conditions": {"default": "a", "evil": "b", "distant": "c"},
+                "conditions": {"default": "a", "unhelpful": "b", "cynical": "s", "distant": "c"},
                 "judge_system": "js",
                 "judge_rubric": "jr",
                 "judge_schema": {},

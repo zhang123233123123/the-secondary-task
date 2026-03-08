@@ -18,7 +18,7 @@ def test_approve_and_activate_frozen_versions(tmp_path):
     prompts_candidate.write_text(
         json.dumps(
             {
-                "conditions": {"default": "d", "evil": "e", "distant": "x"},
+                "conditions": {"default": "d", "unhelpful": "e", "cynical": "c", "distant": "x"},
                 "judge_system": "judge",
                 "judge_rubric": "rubric",
                 "judge_schema": {"type": "object"},
@@ -82,7 +82,7 @@ def test_apply_versions_to_config_updates_paths(tmp_path):
     prompts_candidate.write_text(
         json.dumps(
             {
-                "conditions": {"default": "d", "evil": "e", "distant": "x"},
+                "conditions": {"default": "d", "unhelpful": "e", "cynical": "c", "distant": "x"},
                 "judge_system": "judge",
                 "judge_rubric": "rubric",
                 "judge_schema": {"type": "object"},

@@ -17,7 +17,7 @@ def _write_minimal_inputs(tmp_path, resume_strategy: str) -> Path:
     )
     prompts_path.write_text(
         (
-            '{"conditions":{"default":"d","evil":"e","distant":"x"},'
+            '{"conditions":{"default":"d","unhelpful":"e","cynical":"c","distant":"x"},'
             '"judge_system":"j","judge_rubric":"r","judge_schema":{"type":"object"}}'
         ),
         encoding="utf-8",

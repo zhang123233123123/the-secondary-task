@@ -27,7 +27,8 @@ def test_run_experiment_writes_results_without_api_key(tmp_path):
             {
                 "conditions": {
                     "default": "default",
-                    "evil": "evil",
+                    "unhelpful": "unhelpful",
+                    "cynical": "cynical",
                     "distant": "distant",
                 },
                 "judge_system": "judge",
@@ -100,7 +101,7 @@ def test_abort_on_error_still_writes_summary(tmp_path):
     prompts_path.write_text(
         json.dumps(
             {
-                "conditions": {"default": "d", "evil": "e", "distant": "x"},
+                "conditions": {"default": "d", "unhelpful": "e", "cynical": "c", "distant": "x"},
                 "judge_system": "judge",
                 "judge_rubric": "rubric",
                 "judge_schema": {"type": "object"},
@@ -179,7 +180,7 @@ def test_failed_generate_turn_not_added_to_history(tmp_path, monkeypatch):
     prompts_path.write_text(
         json.dumps(
             {
-                "conditions": {"default": "default", "evil": "evil", "distant": "distant"},
+                "conditions": {"default": "default", "unhelpful": "unhelpful", "cynical": "cynical", "distant": "distant"},
                 "judge_system": "judge",
                 "judge_rubric": "rubric",
                 "judge_schema": {
@@ -267,7 +268,7 @@ def test_run_experiment_requires_approved_inputs_by_default(tmp_path):
     prompts_path.write_text(
         json.dumps(
             {
-                "conditions": {"default": "default", "evil": "evil", "distant": "distant"},
+                "conditions": {"default": "default", "unhelpful": "unhelpful", "cynical": "cynical", "distant": "distant"},
                 "judge_system": "judge",
                 "judge_rubric": "rubric",
                 "judge_schema": {"type": "object"},
@@ -328,7 +329,7 @@ def test_run_experiment_accepts_approved_inputs(tmp_path):
     candidate_prompts.write_text(
         json.dumps(
             {
-                "conditions": {"default": "default", "evil": "evil", "distant": "distant"},
+                "conditions": {"default": "default", "unhelpful": "unhelpful", "cynical": "cynical", "distant": "distant"},
                 "judge_system": "judge",
                 "judge_rubric": "rubric",
                 "judge_schema": {"type": "object"},
@@ -413,7 +414,7 @@ def test_judge_score_out_of_range_marked_as_judge_parse(tmp_path, monkeypatch):
     prompts_path.write_text(
         json.dumps(
             {
-                "conditions": {"default": "default", "evil": "evil", "distant": "distant"},
+                "conditions": {"default": "default", "unhelpful": "unhelpful", "cynical": "cynical", "distant": "distant"},
                 "judge_system": "judge",
                 "judge_rubric": "rubric",
                 "judge_schema": {
@@ -479,3 +480,91 @@ def test_judge_score_out_of_range_marked_as_judge_parse(tmp_path, monkeypatch):
     assert row["error_stage"] == "judge_parse"
     assert row["harm"] is None
     assert "out of range" in (row["error_message"] or "")
+
+
+def test_run_experiment_supports_mixed_llm_providers(tmp_path, monkeypatch):
+    dialogues_path = tmp_path / "dialogues.jsonl"
+    prompts_path = tmp_path / "prompts.json"
+    config_path = tmp_path / "config.yaml"
+    output_dir = tmp_path / "out"
+
+    dialogues_path.write_text(
+        '{"dialogue_id":"D1","domain":"creative","turns":[{"role":"user","text":"hello"}]}\n',
+        encoding="utf-8",
+    )
+    prompts_path.write_text(
+        json.dumps(
+            {
+                "conditions": {"default": "default", "unhelpful": "unhelpful", "cynical": "cynical", "distant": "distant"},
+                "judge_system": "judge",
+                "judge_rubric": "rubric",
+                "judge_schema": {
+                    "type": "object",
+                    "properties": {
+                        "harm": {"type": "integer"},
+                        "emotion": {"type": "integer"},
+                        "anthro": {"type": "integer"},
+                    },
+                    "required": ["harm", "emotion", "anthro"],
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    config_path.write_text(
+        "\n".join(
+            [
+                f"dialogues_path: {dialogues_path}",
+                f"prompts_path: {prompts_path}",
+                f"output_dir: {output_dir}",
+                "max_turns: 10",
+                "resume_strategy: reconstruct",
+                "flush_policy: per_turn",
+                "retries: 0",
+                "timeout: 5",
+                "truncation_policy: sliding_window",
+                "abort_on_error: false",
+                "input_compatibility_mode: false",
+                "max_history_messages: 20",
+                "require_approved_prompts: false",
+                "require_approved_dialogues: false",
+                "llm3:",
+                "  provider: transformers",
+                "  model: open-source-answer",
+                "  api_key_env: UNUSED",
+                "  base_url: ''",
+                "  temperature: 0.1",
+                "  top_p: 0.9",
+                "  load_in_4bit: true",
+                "llm4:",
+                "  provider: deepseek",
+                "  model: deepseek-judge",
+                "  api_key_env: DEEPSEEK_API_KEY",
+                "  base_url: https://api.deepseek.com/v1",
+                "  temperature: 0.0",
+                "  top_p: 1.0",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    class _FakeClient:
+        def __init__(self, model: str) -> None:
+            self.model = model
+
+        def chat(self, messages, timeout_seconds):  # noqa: ANN001
+            del messages, timeout_seconds
+            if self.model == "open-source-answer":
+                return ChatResult(text="mock answer", latency_ms=5, raw={})
+            return ChatResult(text='{"harm":1,"emotion":1,"anthro":1}', latency_ms=4, raw={})
+
+    def fake_build_chat_client(llm_config):  # noqa: ANN001
+        return _FakeClient(llm_config.model)
+
+    monkeypatch.setattr("backend.orchestrator.build_chat_client", fake_build_chat_client)
+
+    config = load_config(config_path)
+    result = run_experiment(config=config, config_path=str(config_path), dry_run=False, run_id="mix_case")
+    row = json.loads(Path(result["results_path"]).read_text(encoding="utf-8").splitlines()[0])
+    assert row["llm3_provider"] == "transformers"
+    assert row["llm4_provider"] == "deepseek"
