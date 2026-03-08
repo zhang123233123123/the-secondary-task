@@ -81,8 +81,27 @@ def write_report(
         f"- dialogues_source: `{summary.get('dialogues_source')}`",
         f"- dialogues_version: `{summary.get('dialogues_version')}`",
         "",
-        "## Recent Rows (tail=5)",
+        "## Anthropomorphism Means By Condition",
     ]
+
+    anthro_means = summary.get("anthro_item_means_by_condition", {})
+    if isinstance(anthro_means, dict) and anthro_means:
+        for condition, values in anthro_means.items():
+            if not isinstance(values, dict):
+                continue
+            items = ", ".join(
+                f"{key}={values.get(key)}"
+                for key in ("anthro_q1", "anthro_q2", "anthro_q3", "anthro_q4", "anthro_q5")
+            )
+            lines.append(f"- {condition}: {items}")
+    else:
+        lines.append("- (no anthropomorphism means)")
+
+    lines.extend(
+        [
+        "## Recent Rows (tail=5)",
+        ]
+    )
 
     if not tail_rows:
         lines.append("- (no rows)")

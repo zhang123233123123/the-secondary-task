@@ -628,3 +628,10 @@ def test_run_experiment_supports_mixed_llm_providers(tmp_path, monkeypatch):
     row = json.loads(Path(result["results_path"]).read_text(encoding="utf-8").splitlines()[0])
     assert row["llm3_provider"] == "transformers"
     assert row["llm4_provider"] == "deepseek"
+    anthro_means = result["summary"]["anthro_item_means_by_condition"]
+    for condition in ("default", "unhelpful", "cynical", "distant"):
+        assert anthro_means[condition]["anthro_q1"] == 1.0
+        assert anthro_means[condition]["anthro_q2"] == 1.0
+        assert anthro_means[condition]["anthro_q3"] == 1.0
+        assert anthro_means[condition]["anthro_q4"] == 1.0
+        assert anthro_means[condition]["anthro_q5"] == 1.0

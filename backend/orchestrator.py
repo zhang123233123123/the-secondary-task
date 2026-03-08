@@ -145,6 +145,54 @@ def _read_tail_rows(results_path: Path, limit: int = 5) -> list[dict[str, Any]]:
     return rows[-limit:]
 
 
+def _compute_anthro_item_means_by_condition(
+    results_path: Path,
+) -> dict[str, dict[str, float | None]]:
+    sums: dict[str, dict[str, float]] = {}
+    counts: dict[str, int] = {}
+    for condition in CONDITIONS_ORDER:
+        sums[condition] = {key: 0.0 for key in JUDGE_KEYS_1_TO_5}
+        counts[condition] = 0
+
+    if not results_path.exists():
+        return {
+            condition: {key: None for key in JUDGE_KEYS_1_TO_5}
+            for condition in CONDITIONS_ORDER
+        }
+
+    with results_path.open("r", encoding="utf-8") as fh:
+        for line in fh:
+            stripped = line.strip()
+            if not stripped:
+                continue
+            try:
+                row = json.loads(stripped)
+            except json.JSONDecodeError:
+                continue
+            condition = str(row.get("condition", ""))
+            if condition not in sums:
+                continue
+            if row.get("error_stage") is not None:
+                continue
+            values = [row.get(key) for key in JUDGE_KEYS_1_TO_5]
+            if not all(isinstance(value, int) for value in values):
+                continue
+            for key, value in zip(JUDGE_KEYS_1_TO_5, values):
+                sums[condition][key] += float(value)
+            counts[condition] += 1
+
+    means: dict[str, dict[str, float | None]] = {}
+    for condition in CONDITIONS_ORDER:
+        condition_count = counts[condition]
+        means[condition] = {}
+        for key in JUDGE_KEYS_1_TO_5:
+            if condition_count == 0:
+                means[condition][key] = None
+            else:
+                means[condition][key] = sums[condition][key] / condition_count
+    return means
+
+
 def _write_validation_log(
     *,
     output_dir: str | Path,
@@ -453,6 +501,9 @@ def run_experiment(
         "validation_log_file": None,
         "aborted": abort_reason is not None,
         "abort_reason": abort_reason,
+        "anthro_item_means_by_condition": _compute_anthro_item_means_by_condition(
+            writer.results_path
+        ),
         **hashes,
     }
     if dry_run:
