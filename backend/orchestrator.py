@@ -24,6 +24,19 @@ from .schema_validation import validate_with_simple_schema
 from .runtime_config import RuntimeConfig
 
 CONDITIONS_ORDER = ("default", "unhelpful", "cynical", "distant")
+JUDGE_KEYS_1_TO_10 = (
+    "harm_1_10",
+    "negative_emotion_1_10",
+    "inappropriate_1_10",
+    "empathic_language_1_10",
+)
+JUDGE_KEYS_1_TO_5 = (
+    "anthro_q1",
+    "anthro_q2",
+    "anthro_q3",
+    "anthro_q4",
+    "anthro_q5",
+)
 
 
 @dataclass
@@ -74,10 +87,11 @@ def _timestamp_utc() -> str:
 
 
 def _judge_messages(prompts: PromptsBundle, model_reply: str) -> list[dict[str, str]]:
+    all_keys = [*JUDGE_KEYS_1_TO_10, *JUDGE_KEYS_1_TO_5]
     user_content = (
         f"Rubric:\n{prompts.judge_rubric}\n\n"
         f"Model reply to evaluate:\n{model_reply}\n\n"
-        "Return only JSON with keys harm, emotion, anthro."
+        f"Return only JSON with keys: {', '.join(all_keys)}."
     )
     return [
         {"role": "system", "content": prompts.judge_system},
@@ -105,9 +119,13 @@ def _call_with_retry(
     raise last_error
 
 
-def _validate_judge_score_range(*, harm: int, emotion: int, anthro: int) -> None:
-    values = {"harm": harm, "emotion": emotion, "anthro": anthro}
-    for key, value in values.items():
+def _validate_judge_score_range(values: dict[str, int]) -> None:
+    for key in JUDGE_KEYS_1_TO_10:
+        value = values[key]
+        if value < 1 or value > 10:
+            raise ValueError(f"{key} out of range: {value}")
+    for key in JUDGE_KEYS_1_TO_5:
+        value = values[key]
         if value < 1 or value > 5:
             raise ValueError(f"{key} out of range: {value}")
 
@@ -257,9 +275,15 @@ def run_experiment(
                     model_reply = ""
                     gen_latency_ms: int | None = None
                     judge_latency_ms: int | None = None
-                    harm: int | None = None
-                    emotion: int | None = None
-                    anthro: int | None = None
+                    harm_1_10: int | None = None
+                    negative_emotion_1_10: int | None = None
+                    inappropriate_1_10: int | None = None
+                    empathic_language_1_10: int | None = None
+                    anthro_q1: int | None = None
+                    anthro_q2: int | None = None
+                    anthro_q3: int | None = None
+                    anthro_q4: int | None = None
+                    anthro_q5: int | None = None
                     error_stage: str | None = None
                     error_message: str | None = None
                     judge_raw: str | None = None
@@ -291,20 +315,39 @@ def run_experiment(
                             judge_raw = judge_result.text
                             parsed = parse_judge_json(judge_result.text)
                             validate_with_simple_schema(parsed, prompts.judge_schema)
-                            harm = int(parsed.get("harm"))
-                            emotion = int(parsed.get("emotion"))
-                            anthro = int(parsed.get("anthro"))
-                            _validate_judge_score_range(
-                                harm=harm,
-                                emotion=emotion,
-                                anthro=anthro,
-                            )
-                        except ValueError as exc:
+                            scores = {
+                                "harm_1_10": int(parsed.get("harm_1_10")),
+                                "negative_emotion_1_10": int(parsed.get("negative_emotion_1_10")),
+                                "inappropriate_1_10": int(parsed.get("inappropriate_1_10")),
+                                "empathic_language_1_10": int(parsed.get("empathic_language_1_10")),
+                                "anthro_q1": int(parsed.get("anthro_q1")),
+                                "anthro_q2": int(parsed.get("anthro_q2")),
+                                "anthro_q3": int(parsed.get("anthro_q3")),
+                                "anthro_q4": int(parsed.get("anthro_q4")),
+                                "anthro_q5": int(parsed.get("anthro_q5")),
+                            }
+                            _validate_judge_score_range(scores)
+                            harm_1_10 = scores["harm_1_10"]
+                            negative_emotion_1_10 = scores["negative_emotion_1_10"]
+                            inappropriate_1_10 = scores["inappropriate_1_10"]
+                            empathic_language_1_10 = scores["empathic_language_1_10"]
+                            anthro_q1 = scores["anthro_q1"]
+                            anthro_q2 = scores["anthro_q2"]
+                            anthro_q3 = scores["anthro_q3"]
+                            anthro_q4 = scores["anthro_q4"]
+                            anthro_q5 = scores["anthro_q5"]
+                        except (TypeError, ValueError) as exc:
                             error_stage = "judge_parse"
                             error_message = str(exc)
-                            harm = None
-                            emotion = None
-                            anthro = None
+                            harm_1_10 = None
+                            negative_emotion_1_10 = None
+                            inappropriate_1_10 = None
+                            empathic_language_1_10 = None
+                            anthro_q1 = None
+                            anthro_q2 = None
+                            anthro_q3 = None
+                            anthro_q4 = None
+                            anthro_q5 = None
                             stats.judge_parse_errors += 1
                         except (LLMError, RuntimeError) as exc:
                             error_stage = "judge"
@@ -324,9 +367,15 @@ def run_experiment(
                         "timestamp_utc": _timestamp_utc(),
                         "user_text": user_text,
                         "model_reply": model_reply,
-                        "harm": harm,
-                        "emotion": emotion,
-                        "anthro": anthro,
+                        "harm_1_10": harm_1_10,
+                        "negative_emotion_1_10": negative_emotion_1_10,
+                        "inappropriate_1_10": inappropriate_1_10,
+                        "empathic_language_1_10": empathic_language_1_10,
+                        "anthro_q1": anthro_q1,
+                        "anthro_q2": anthro_q2,
+                        "anthro_q3": anthro_q3,
+                        "anthro_q4": anthro_q4,
+                        "anthro_q5": anthro_q5,
                         "error_stage": error_stage,
                         "error_message": error_message,
                         "refusal_detected": refusal_detected,

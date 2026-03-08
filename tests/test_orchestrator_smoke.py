@@ -80,8 +80,8 @@ def test_run_experiment_writes_results_without_api_key(tmp_path):
     assert Path(result["results_path"]).exists()
     assert Path(result["summary_path"]).exists()
     assert Path(result["report_path"]).exists()
-    assert result["summary"]["actual_rows"] == 6
-    assert result["summary"]["generate_errors"] == 6
+    assert result["summary"]["actual_rows"] == 8
+    assert result["summary"]["generate_errors"] == 8
     assert result["summary"]["refusal_rate"] == 0.0
     assert result["summary"]["dry_run"] is True
     assert result["summary"]["validation_log_file"] is not None
@@ -186,11 +186,27 @@ def test_failed_generate_turn_not_added_to_history(tmp_path, monkeypatch):
                 "judge_schema": {
                     "type": "object",
                     "properties": {
-                        "harm": {"type": "integer"},
-                        "emotion": {"type": "integer"},
-                        "anthro": {"type": "integer"},
+                        "harm_1_10": {"type": "integer"},
+                        "negative_emotion_1_10": {"type": "integer"},
+                        "inappropriate_1_10": {"type": "integer"},
+                        "empathic_language_1_10": {"type": "integer"},
+                        "anthro_q1": {"type": "integer"},
+                        "anthro_q2": {"type": "integer"},
+                        "anthro_q3": {"type": "integer"},
+                        "anthro_q4": {"type": "integer"},
+                        "anthro_q5": {"type": "integer"},
                     },
-                    "required": ["harm", "emotion", "anthro"],
+                    "required": [
+                        "harm_1_10",
+                        "negative_emotion_1_10",
+                        "inappropriate_1_10",
+                        "empathic_language_1_10",
+                        "anthro_q1",
+                        "anthro_q2",
+                        "anthro_q3",
+                        "anthro_q4",
+                        "anthro_q5",
+                    ],
                 },
             }
         ),
@@ -244,7 +260,11 @@ def test_failed_generate_turn_not_added_to_history(tmp_path, monkeypatch):
             if llm3_call_count == 1:
                 raise LLMError("forced generate failure")
             return ChatResult(text="safe response", latency_ms=12, raw={})
-        return ChatResult(text='{"harm":1,"emotion":1,"anthro":1}', latency_ms=8, raw={})
+        return ChatResult(
+            text='{"harm_1_10":1,"negative_emotion_1_10":1,"inappropriate_1_10":1,"empathic_language_1_10":1,"anthro_q1":1,"anthro_q2":1,"anthro_q3":1,"anthro_q4":1,"anthro_q5":1}',
+            latency_ms=8,
+            raw={},
+        )
 
     monkeypatch.setattr("backend.llm_clients.OpenAICompatibleChatClient.chat", fake_chat)
 
@@ -420,11 +440,27 @@ def test_judge_score_out_of_range_marked_as_judge_parse(tmp_path, monkeypatch):
                 "judge_schema": {
                     "type": "object",
                     "properties": {
-                        "harm": {"type": "integer"},
-                        "emotion": {"type": "integer"},
-                        "anthro": {"type": "integer"},
+                        "harm_1_10": {"type": "integer"},
+                        "negative_emotion_1_10": {"type": "integer"},
+                        "inappropriate_1_10": {"type": "integer"},
+                        "empathic_language_1_10": {"type": "integer"},
+                        "anthro_q1": {"type": "integer"},
+                        "anthro_q2": {"type": "integer"},
+                        "anthro_q3": {"type": "integer"},
+                        "anthro_q4": {"type": "integer"},
+                        "anthro_q5": {"type": "integer"},
                     },
-                    "required": ["harm", "emotion", "anthro"],
+                    "required": [
+                        "harm_1_10",
+                        "negative_emotion_1_10",
+                        "inappropriate_1_10",
+                        "empathic_language_1_10",
+                        "anthro_q1",
+                        "anthro_q2",
+                        "anthro_q3",
+                        "anthro_q4",
+                        "anthro_q5",
+                    ],
                 },
             }
         ),
@@ -470,7 +506,11 @@ def test_judge_score_out_of_range_marked_as_judge_parse(tmp_path, monkeypatch):
         del messages, timeout_seconds
         if self.config.model == "llm3-test":
             return ChatResult(text="safe response", latency_ms=11, raw={})
-        return ChatResult(text='{"harm":7,"emotion":1,"anthro":1}', latency_ms=9, raw={})
+        return ChatResult(
+            text='{"harm_1_10":11,"negative_emotion_1_10":1,"inappropriate_1_10":1,"empathic_language_1_10":1,"anthro_q1":1,"anthro_q2":1,"anthro_q3":1,"anthro_q4":1,"anthro_q5":1}',
+            latency_ms=9,
+            raw={},
+        )
 
     monkeypatch.setattr("backend.llm_clients.OpenAICompatibleChatClient.chat", fake_chat)
     config = load_config(config_path)
@@ -478,7 +518,7 @@ def test_judge_score_out_of_range_marked_as_judge_parse(tmp_path, monkeypatch):
 
     row = json.loads(Path(result["results_path"]).read_text(encoding="utf-8").splitlines()[0])
     assert row["error_stage"] == "judge_parse"
-    assert row["harm"] is None
+    assert row["harm_1_10"] is None
     assert "out of range" in (row["error_message"] or "")
 
 
@@ -501,11 +541,27 @@ def test_run_experiment_supports_mixed_llm_providers(tmp_path, monkeypatch):
                 "judge_schema": {
                     "type": "object",
                     "properties": {
-                        "harm": {"type": "integer"},
-                        "emotion": {"type": "integer"},
-                        "anthro": {"type": "integer"},
+                        "harm_1_10": {"type": "integer"},
+                        "negative_emotion_1_10": {"type": "integer"},
+                        "inappropriate_1_10": {"type": "integer"},
+                        "empathic_language_1_10": {"type": "integer"},
+                        "anthro_q1": {"type": "integer"},
+                        "anthro_q2": {"type": "integer"},
+                        "anthro_q3": {"type": "integer"},
+                        "anthro_q4": {"type": "integer"},
+                        "anthro_q5": {"type": "integer"},
                     },
-                    "required": ["harm", "emotion", "anthro"],
+                    "required": [
+                        "harm_1_10",
+                        "negative_emotion_1_10",
+                        "inappropriate_1_10",
+                        "empathic_language_1_10",
+                        "anthro_q1",
+                        "anthro_q2",
+                        "anthro_q3",
+                        "anthro_q4",
+                        "anthro_q5",
+                    ],
                 },
             }
         ),
@@ -556,7 +612,11 @@ def test_run_experiment_supports_mixed_llm_providers(tmp_path, monkeypatch):
             del messages, timeout_seconds
             if self.model == "open-source-answer":
                 return ChatResult(text="mock answer", latency_ms=5, raw={})
-            return ChatResult(text='{"harm":1,"emotion":1,"anthro":1}', latency_ms=4, raw={})
+            return ChatResult(
+                text='{"harm_1_10":1,"negative_emotion_1_10":1,"inappropriate_1_10":1,"empathic_language_1_10":1,"anthro_q1":1,"anthro_q2":1,"anthro_q3":1,"anthro_q4":1,"anthro_q5":1}',
+                latency_ms=4,
+                raw={},
+            )
 
     def fake_build_chat_client(llm_config):  # noqa: ANN001
         return _FakeClient(llm_config.model)
