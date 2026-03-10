@@ -50,7 +50,7 @@
         <div class="flex items-center gap-2 text-xs">
           <a id="config-open-setup" href="/frontend/experiment-setup.html" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white">配置</a>
           <a id="config-open-monitor" href="/frontend/live-monitor.html" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white">监控</a>
-          <a id="config-open-results" href="/frontend/results-analysis.html" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white">结果</a>
+          <a id="config-open-results" href="/frontend/analysis.html" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white">结果</a>
           <a id="config-open-prep" href="/frontend/data-preparation.html" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white">数据准备</a>
           <a id="config-open-settings" href="/frontend/settings-api.html" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white">API 密钥</a>
         </div>
@@ -123,7 +123,7 @@
         function syncLinks() {
           if (links.setup) links.setup.href = withContext("/frontend/experiment-setup.html");
           if (links.monitor) links.monitor.href = withContext("/frontend/live-monitor.html");
-          if (links.results) links.results.href = withContext("/frontend/results-analysis.html");
+          if (links.results) links.results.href = withContext("/frontend/analysis.html");
           if (links.prep) links.prep.href = withContext("/frontend/data-preparation.html");
           if (links.settings) links.settings.href = withContext("/frontend/settings-api.html");
         }

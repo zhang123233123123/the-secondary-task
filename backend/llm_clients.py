@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import ssl
 import time
 import urllib.error
 import urllib.request
@@ -9,6 +10,11 @@ from dataclasses import dataclass
 from typing import Any
 
 from .runtime_config import LLMConfig
+
+try:
+    import certifi
+except Exception:  # noqa: BLE001
+    certifi = None
 
 
 @dataclass
@@ -54,7 +60,10 @@ class OpenAICompatibleChatClient:
 
         start = time.perf_counter()
         try:
-            with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
+            ssl_context = None
+            if certifi is not None:
+                ssl_context = ssl.create_default_context(cafile=certifi.where())
+            with urllib.request.urlopen(request, timeout=timeout_seconds, context=ssl_context) as response:
                 text = response.read().decode("utf-8")
         except urllib.error.HTTPError as exc:
             error_payload = exc.read().decode("utf-8", errors="replace")

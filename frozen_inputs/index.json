@@ -1,6 +1,6 @@
 {
   "active": {
-    "prompts_version": "prepare_20260219_140422_dc796b",
+    "prompts_version": "persona_20260310_legacyfix",
     "dialogues_version": "prepare_20260219_140422_dc796b"
   },
   "prompts_versions": [
@@ -23,6 +23,16 @@
       "review_note": "",
       "candidate_file": "frozen_inputs/candidates/prompts_candidate_prep_20260219_140422_81d556.json",
       "candidate_sha256": "5519210344038b969b8d17a898964a19f094e669fe3b60bf2f116a8db7c6a5ef"
+    },
+    {
+      "version": "persona_20260310_legacyfix",
+      "file": "frozen_inputs/prompts/prompts_persona_20260310_legacyfix.json",
+      "sha256": "a49b82a0a10e399bc74678572e18fceca779ff0a3b9bdc79dbce10ca33915cdc",
+      "approved_by": "codex",
+      "approved_at_utc": "2026-03-10T02:38:05.624893+00:00",
+      "review_note": "persona refinement + judge rubric upgrade",
+      "candidate_file": "frozen_inputs/candidates/prompts_candidate_persona_20260310_legacyfix.json",
+      "candidate_sha256": "a49b82a0a10e399bc74678572e18fceca779ff0a3b9bdc79dbce10ca33915cdc"
     }
   ],
   "dialogues_versions": [

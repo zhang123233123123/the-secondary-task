@@ -133,7 +133,7 @@
             <a
               id="setup-nav-exp"
               class="text-text-subtle hover:text-primary transition-colors"
-              href="/frontend/results-analysis.html"
+              href="/frontend/analysis.html"
               >实验</a
             >
             <span class="text-border-dark">/</span>
@@ -173,7 +173,7 @@
             <a
               id="setup-open-results-top"
               class="px-3 py-1 rounded-full bg-card-dark text-text-subtle text-xs border border-border-dark hover:text-white transition-colors"
-              href="/frontend/results-analysis.html"
+              href="/frontend/analysis.html"
               >结果</a
             >
             <a
@@ -489,7 +489,7 @@
             </div>
             <div id="setup-run-links" class="flex items-center gap-2 text-xs">
               <a id="setup-open-monitor" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white" href="/frontend/live-monitor.html">打开监控</a>
-              <a id="setup-open-results" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white" href="/frontend/results-analysis.html">打开结果</a>
+              <a id="setup-open-results" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white" href="/frontend/analysis.html">打开结果</a>
               <a id="setup-open-settings" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white" href="/frontend/settings-api.html">API 密钥设置</a>
               <a id="setup-open-prep" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white" href="/frontend/data-preparation.html">数据准备</a>
               <a id="setup-open-config" class="px-3 py-2 rounded border border-border-dark text-text-subtle hover:text-white" href="/frontend/configuration.html">配置编辑器</a>
@@ -557,14 +557,14 @@
 
         function syncLinks(runId) {
           if (navHome) navHome.href = withRunId("/frontend/experiment-setup.html", runId);
-          if (navExp) navExp.href = withRunId("/frontend/results-analysis.html", runId);
+          if (navExp) navExp.href = withRunId("/frontend/analysis.html", runId);
           if (monitorLink) monitorLink.href = withRunId("/frontend/live-monitor.html", runId);
-          if (resultsLink) resultsLink.href = withRunId("/frontend/results-analysis.html", runId);
+          if (resultsLink) resultsLink.href = withRunId("/frontend/analysis.html", runId);
           if (settingsLink) settingsLink.href = withRunId("/frontend/settings-api.html", runId);
           if (prepLink) prepLink.href = withRunId("/frontend/data-preparation.html", runId);
           if (configLink) configLink.href = withRunId("/frontend/configuration.html", runId);
           if (monitorTopLink) monitorTopLink.href = withRunId("/frontend/live-monitor.html", runId);
-          if (resultsTopLink) resultsTopLink.href = withRunId("/frontend/results-analysis.html", runId);
+          if (resultsTopLink) resultsTopLink.href = withRunId("/frontend/analysis.html", runId);
           if (settingsTopLink) settingsTopLink.href = withRunId("/frontend/settings-api.html", runId);
           if (prepTopLink) prepTopLink.href = withRunId("/frontend/data-preparation.html", runId);
           if (configTopLink) configTopLink.href = withRunId("/frontend/configuration.html", runId);

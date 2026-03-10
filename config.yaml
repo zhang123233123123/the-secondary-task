@@ -1,5 +1,5 @@
 dialogues_path: frozen_inputs/dialogues/dialogues_prepare_20260219_140422_dc796b.jsonl
-prompts_path: frozen_inputs/prompts/prompts_prepare_20260219_140422_dc796b.json
+prompts_path: frozen_inputs/prompts/prompts_persona_20260310_legacyfix.json
 max_turns: 10
 output_dir: output
 resume_strategy: reconstruct
@@ -10,8 +10,7 @@ truncation_policy: sliding_window
 max_context_chars: 8000
 abort_on_error: false
 input_compatibility_mode: true
-frozen_index_path: "/Users/zhangzhanghongjian/Desktop/the secondary project(5\u6708\
-  \u4E4B\u524D\u5B8C\u6210)/the secondary project/frozen_inputs/index.json"
+frozen_index_path: /Users/zhanghongjian/Desktop/the-secondary-task/frozen_inputs/index.json
 require_approved_prompts: true
 require_approved_dialogues: true
 prepare_dialogue_count: 10

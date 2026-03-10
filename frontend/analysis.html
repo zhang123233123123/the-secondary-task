@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>StyleDrift Lab - 单次实验分析</title>
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Roboto+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              primary: "#3c83f6",
+              "background-light": "#f5f7f8",
+              "background-dark": "#101722",
+              "surface-dark": "#1e293b",
+              "border-dark": "#334155",
+            },
+            fontFamily: {
+              display: ["Inter", "sans-serif"],
+              mono: ["Roboto Mono", "monospace"],
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+      }
+      .font-mono {
+        font-family: "Roboto Mono", monospace;
+      }
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: #1e293b;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #475569;
+        border-radius: 4px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #64748b;
+      }
+    </style>
+  </head>
+  <body
+    class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex flex-col font-display antialiased selection:bg-primary/30 selection:text-white"
+  >
+    <div class="w-full border-b border-border-dark bg-[#101723]">
+      <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+        <header class="flex items-center justify-between h-16">
+          <div class="flex items-center gap-3">
+            <div class="flex items-center justify-center size-8 bg-primary/20 rounded-lg text-primary">
+              <span class="material-symbols-outlined text-2xl">science</span>
+            </div>
+            <h1 class="text-white text-lg font-bold tracking-tight">StyleDrift Lab</h1>
+          </div>
+          <nav class="hidden md:flex items-center gap-8">
+            <a id="analysis-open-setup" class="text-slate-400 hover:text-white text-sm font-medium" href="/frontend/experiment-setup.html">配置</a>
+            <a class="text-white text-sm font-medium bg-primary/10 px-3 py-1.5 rounded-lg border border-primary/20" href="/frontend/analysis.html">结果</a>
+            <a id="analysis-open-monitor" class="text-slate-400 hover:text-white text-sm font-medium" href="/frontend/live-monitor.html">监控</a>
+            <a id="analysis-open-settings" class="text-slate-400 hover:text-white text-sm font-medium" href="/frontend/settings-api.html">设置</a>
+            <a id="analysis-open-prep" class="text-slate-400 hover:text-white text-sm font-medium" href="/frontend/data-preparation.html">数据准备</a>
+            <a id="analysis-open-config" class="text-slate-400 hover:text-white text-sm font-medium" href="/frontend/configuration.html">配置</a>
+          </nav>
+          <div class="flex items-center gap-3">
+            <span id="analysis-top-run-id" class="text-xs font-mono text-slate-500">run: -</span>
+          </div>
+        </header>
+      </div>
+    </div>
+
+    <main class="flex-1 flex flex-col max-w-[1440px] mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 gap-6">
+      <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div class="space-y-1">
+          <div class="flex items-center gap-2 text-sm text-slate-400">
+            <span class="text-white font-medium">单次实验分析</span>
+            <span class="material-symbols-outlined text-[12px] opacity-50">chevron_right</span>
+            <span class="text-primary font-medium">同一 Run 内对话/人设/指标</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <h2 class="text-3xl font-bold text-white tracking-tight">Single Run Analytics</h2>
+            <span id="analysis-status-badge" class="px-2.5 py-0.5 rounded-full bg-slate-500/10 border border-slate-500/20 text-slate-300 text-xs font-medium uppercase">unknown</span>
+          </div>
+          <p id="analysis-meta-text" class="text-slate-400 text-sm max-w-3xl">正在加载实验数据...</p>
+        </div>
+        <div class="flex items-center gap-3 flex-wrap">
+          <button id="analysis-refresh-btn" class="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary hover:bg-blue-600 text-white text-sm font-bold">
+            <span class="material-symbols-outlined text-[18px]">insights</span>
+            Refresh
+          </button>
+          <a id="analysis-open-legacy" class="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border-dark bg-surface-dark hover:bg-slate-800 text-slate-300 text-sm font-medium" href="/frontend/results-analysis.html">
+            <span class="material-symbols-outlined text-[18px]">table_view</span>
+            明细页
+          </a>
+        </div>
+      </div>
+
+      <section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+        <div class="rounded-xl border border-border-dark bg-surface-dark p-4"><div class="text-xs text-slate-400 uppercase">Actual Rows</div><div id="kpi-actual-rows" class="mt-2 text-2xl font-bold text-white font-mono">-</div></div>
+        <div class="rounded-xl border border-border-dark bg-surface-dark p-4"><div class="text-xs text-slate-400 uppercase">Error Rate</div><div id="kpi-error-rate" class="mt-2 text-2xl font-bold text-red-300 font-mono">-</div></div>
+        <div class="rounded-xl border border-border-dark bg-surface-dark p-4"><div class="text-xs text-slate-400 uppercase">Refusal Rate</div><div id="kpi-refusal-rate" class="mt-2 text-2xl font-bold text-amber-300 font-mono">-</div></div>
+        <div class="rounded-xl border border-border-dark bg-surface-dark p-4"><div class="text-xs text-slate-400 uppercase">Gen Latency</div><div id="kpi-gen-latency" class="mt-2 text-2xl font-bold text-sky-300 font-mono">-</div></div>
+        <div class="rounded-xl border border-border-dark bg-surface-dark p-4"><div class="text-xs text-slate-400 uppercase">Judge Latency</div><div id="kpi-judge-latency" class="mt-2 text-2xl font-bold text-emerald-300 font-mono">-</div></div>
+      </section>
+
+      <section class="rounded-xl border border-border-dark bg-surface-dark">
+        <div class="px-4 py-3 border-b border-border-dark">
+          <h3 class="text-sm font-semibold text-slate-200">人设 × 指标 × 轮次趋势</h3>
+        </div>
+        <div id="analysis-trend-charts" class="p-4 grid grid-cols-1 xl:grid-cols-2 gap-4"></div>
+      </section>
+
+      <section class="rounded-xl border border-border-dark bg-surface-dark">
+        <div class="px-4 py-3 border-b border-border-dark">
+          <h3 class="text-sm font-semibold text-slate-200">分布分析</h3>
+        </div>
+        <div class="p-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div class="rounded-lg border border-border-dark bg-background-dark p-3"><div class="text-xs text-slate-400 mb-2">Error Stage</div><div id="dist-error" class="text-xs text-slate-200 space-y-1 font-mono">-</div></div>
+          <div class="rounded-lg border border-border-dark bg-background-dark p-3"><div class="text-xs text-slate-400 mb-2">Refusal</div><div id="dist-refusal" class="text-xs text-slate-200 space-y-1 font-mono">-</div></div>
+          <div class="rounded-lg border border-border-dark bg-background-dark p-3"><div class="text-xs text-slate-400 mb-2">Domain</div><div id="dist-domain" class="text-xs text-slate-200 space-y-1 font-mono">-</div></div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      (function () {
+        const CONDITIONS = ["default", "unhelpful", "cynical", "distant"];
+        const CONDITION_COLORS = {
+          default: "#38bdf8",
+          unhelpful: "#f97316",
+          cynical: "#ef4444",
+          distant: "#a78bfa",
+        };
+        const METRICS = [
+          { key: "harm_1_10", label: "Harm (1-10)", max: 10 },
+          { key: "negative_emotion_1_10", label: "Negative Emotion (1-10)", max: 10 },
+          { key: "inappropriate_1_10", label: "Inappropriate (1-10)", max: 10 },
+          { key: "empathic_language_1_10", label: "Empathic (1-10)", max: 10 },
+          { key: "anthro_avg", label: "Anthro AVG (1-5)", max: 5 },
+        ];
+
+        const params = new URLSearchParams(window.location.search);
+        let selectedRunId = params.get("run_id");
+        let cachedRows = [];
+
+        const topRunIdEl = document.getElementById("analysis-top-run-id");
+        const statusBadge = document.getElementById("analysis-status-badge");
+        const metaText = document.getElementById("analysis-meta-text");
+        const refreshBtn = document.getElementById("analysis-refresh-btn");
+        const legacyLink = document.getElementById("analysis-open-legacy");
+
+        const setupLink = document.getElementById("analysis-open-setup");
+        const monitorLink = document.getElementById("analysis-open-monitor");
+        const settingsLink = document.getElementById("analysis-open-settings");
+        const prepLink = document.getElementById("analysis-open-prep");
+        const configLink = document.getElementById("analysis-open-config");
+
+        const kpiActualRows = document.getElementById("kpi-actual-rows");
+        const kpiErrorRate = document.getElementById("kpi-error-rate");
+        const kpiRefusalRate = document.getElementById("kpi-refusal-rate");
+        const kpiGenLatency = document.getElementById("kpi-gen-latency");
+        const kpiJudgeLatency = document.getElementById("kpi-judge-latency");
+
+        const trendCharts = document.getElementById("analysis-trend-charts");
+        const distError = document.getElementById("dist-error");
+        const distRefusal = document.getElementById("dist-refusal");
+        const distDomain = document.getElementById("dist-domain");
+
+        function esc(value) {
+          return String(value ?? "")
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;");
+        }
+
+        function toNum(value) {
+          if (value === null || value === undefined || value === "") return null;
+          const parsed = Number(value);
+          return Number.isFinite(parsed) ? parsed : null;
+        }
+
+        function avg(values) {
+          if (!values.length) return null;
+          return values.reduce((sum, x) => sum + x, 0) / values.length;
+        }
+
+        function withRunId(path, runId) {
+          if (!runId) return path;
+          return path + "?run_id=" + encodeURIComponent(runId);
+        }
+
+        function syncLinks(runId) {
+          if (setupLink) setupLink.href = withRunId("/frontend/experiment-setup.html", runId);
+          if (monitorLink) monitorLink.href = withRunId("/frontend/live-monitor.html", runId);
+          if (settingsLink) settingsLink.href = withRunId("/frontend/settings-api.html", runId);
+          if (prepLink) prepLink.href = withRunId("/frontend/data-preparation.html", runId);
+          if (configLink) configLink.href = withRunId("/frontend/configuration.html", runId);
+          if (legacyLink) legacyLink.href = withRunId("/frontend/results-analysis.html", runId);
+        }
+
+        function parseJsonl(text) {
+          return text
+            .split("\n")
+            .filter(Boolean)
+            .map((line) => {
+              try {
+                return JSON.parse(line);
+              } catch (_) {
+                return null;
+              }
+            })
+            .filter(Boolean);
+        }
+
+        function setStatusBadge(runtimeStatus) {
+          const text = String(runtimeStatus || "unknown");
+          statusBadge.textContent = text;
+          statusBadge.className =
+            "px-2.5 py-0.5 rounded-full border text-xs font-medium uppercase " +
+            (text === "succeeded"
+              ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+              : text === "running"
+                ? "bg-amber-500/10 border-amber-500/20 text-amber-400"
+                : text === "failed"
+                  ? "bg-red-500/10 border-red-500/20 text-red-400"
+                  : "bg-slate-500/10 border-slate-500/20 text-slate-300");
+        }
+
+        function metricValue(row, metricKey) {
+          if (metricKey === "anthro_avg") {
+            const xs = [row.anthro_q1, row.anthro_q2, row.anthro_q3, row.anthro_q4, row.anthro_q5]
+              .map(toNum)
+              .filter((x) => x !== null);
+            return xs.length ? avg(xs) : null;
+          }
+          return toNum(row[metricKey]);
+        }
+
+        function countBy(rows, keyGetter) {
+          const map = new Map();
+          for (const row of rows) {
+            const key = keyGetter(row);
+            map.set(key, (map.get(key) || 0) + 1);
+          }
+          return [...map.entries()].sort((a, b) => b[1] - a[1]);
+        }
+
+        function renderCountList(el, rows, keyGetter) {
+          const total = rows.length;
+          const entries = countBy(rows, keyGetter);
+          if (!entries.length) {
+            el.innerHTML = '<div class="text-slate-500">-</div>';
+            return;
+          }
+          el.innerHTML = entries
+            .map(([k, v]) => {
+              const pct = total ? ((v / total) * 100).toFixed(1) : "0.0";
+              return (
+                '<div class="flex items-center justify-between gap-2"><span class="text-slate-300">' +
+                esc(k) +
+                '</span><span class="text-slate-400">' +
+                String(v) +
+                " (" +
+                pct +
+                "%)</span></div>"
+              );
+            })
+            .join("");
+        }
+
+        function meanLatency(rows, field) {
+          const xs = rows.map((x) => toNum(x[field])).filter((x) => x !== null);
+          const m = avg(xs);
+          return m === null ? "-" : Math.round(m) + "ms";
+        }
+
+        function buildTurnSeries(rows, metricKey) {
+          const byTurn = new Map();
+          for (const row of rows) {
+            const turn = toNum(row.turn_index);
+            if (turn === null) continue;
+            if (!byTurn.has(turn)) {
+              byTurn.set(turn, { default: [], unhelpful: [], cynical: [], distant: [] });
+            }
+            const condition = String(row.condition || "");
+            if (!CONDITIONS.includes(condition)) continue;
+            const v = metricValue(row, metricKey);
+            if (v !== null) byTurn.get(turn)[condition].push(v);
+          }
+
+          const turns = [...byTurn.keys()].sort((a, b) => a - b);
+          const valuesByCondition = {};
+          for (const condition of CONDITIONS) {
+            valuesByCondition[condition] = turns.map((t) => avg(byTurn.get(t)[condition]));
+          }
+          return { turns, valuesByCondition };
+        }
+
+        function renderSingleTrendChart(metric, rows) {
+          const { turns, valuesByCondition } = buildTurnSeries(rows, metric.key);
+          if (!turns.length) {
+            return (
+              '<div class="rounded-lg border border-border-dark bg-background-dark p-4">' +
+              '<div class="text-sm text-slate-200 font-semibold mb-2">' +
+              esc(metric.label) +
+              '</div><div class="text-xs text-slate-500">无有效数据</div></div>'
+            );
+          }
+
+          const w = 540;
+          const h = 220;
+          const padL = 38;
+          const padR = 14;
+          const padT = 16;
+          const padB = 28;
+          const xSpan = Math.max(1, turns.length - 1);
+          const yMax = metric.max;
+          const toX = (idx) => padL + ((w - padL - padR) * idx) / xSpan;
+          const toY = (val) => h - padB - ((h - padT - padB) * val) / yMax;
+
+          const lines = CONDITIONS.map((condition) => {
+            const pts = valuesByCondition[condition];
+            const points = pts
+              .map((v, i) => (v === null ? null : `${toX(i).toFixed(2)},${toY(v).toFixed(2)}`))
+              .filter(Boolean)
+              .join(" ");
+            if (!points) return "";
+            const circles = pts
+              .map((v, i) => {
+                if (v === null) return "";
+                return `<circle cx="${toX(i).toFixed(2)}" cy="${toY(v).toFixed(2)}" r="2.8" fill="${CONDITION_COLORS[condition]}" />`;
+              })
+              .join("");
+            return `<polyline fill="none" stroke="${CONDITION_COLORS[condition]}" stroke-width="2.2" points="${points}" />${circles}`;
+          }).join("");
+
+          const xTicks = turns
+            .map((t, i) => `<text x="${toX(i).toFixed(2)}" y="${h - 8}" font-size="10" fill="#94a3b8" text-anchor="middle">${t}</text>`)
+            .join("");
+          const yTicks = [0, yMax / 2, yMax]
+            .map((v) => {
+              const y = toY(v).toFixed(2);
+              return `<line x1="${padL}" y1="${y}" x2="${w - padR}" y2="${y}" stroke="#334155" stroke-width="1" /><text x="${padL - 6}" y="${Number(y) + 3}" font-size="10" fill="#64748b" text-anchor="end">${v}</text>`;
+            })
+            .join("");
+
+          const legend = CONDITIONS
+            .map(
+              (c) =>
+                `<span class="inline-flex items-center gap-1"><span class="inline-block size-2 rounded-full" style="background:${CONDITION_COLORS[c]}"></span>${esc(c)}</span>`
+            )
+            .join("");
+
+          return (
+            '<div class="rounded-lg border border-border-dark bg-background-dark p-4">' +
+            '<div class="flex items-center justify-between mb-2"><div class="text-sm text-slate-200 font-semibold">' +
+            esc(metric.label) +
+            '</div><div class="text-[11px] text-slate-400 font-mono">y in [0,' +
+            String(metric.max) +
+            ']</div></div>' +
+            `<svg viewBox="0 0 ${w} ${h}" class="w-full h-52">${yTicks}${lines}${xTicks}</svg>` +
+            `<div class="mt-2 text-xs text-slate-400 flex items-center gap-3 flex-wrap">${legend}</div>` +
+            "</div>"
+          );
+        }
+
+        function renderTrendCharts(rows) {
+          if (!trendCharts) return;
+          trendCharts.innerHTML = METRICS.map((metric) => renderSingleTrendChart(metric, rows)).join("");
+        }
+
+        async function refresh() {
+          try {
+            const runsResp = await fetch("/runs");
+            if (!runsResp.ok) throw new Error("Failed to load runs index");
+            const runsData = await runsResp.json();
+            let targetRunId = selectedRunId || runsData.latest_run_id;
+            if (!targetRunId) throw new Error("未找到运行");
+
+            let runItem = (runsData.runs || []).find((x) => x.run_id === targetRunId);
+            if (!runItem && runsData.latest_run_id) {
+              targetRunId = runsData.latest_run_id;
+              runItem = (runsData.runs || []).find((x) => x.run_id === targetRunId);
+            }
+            if (!runItem) throw new Error("运行元数据缺失");
+
+            selectedRunId = runItem.run_id;
+            if (topRunIdEl) topRunIdEl.textContent = "run: " + selectedRunId;
+            window.history.replaceState({}, "", withRunId("/frontend/analysis.html", selectedRunId));
+            syncLinks(selectedRunId);
+
+            const [statusResp, summaryResp, resultsResp] = await Promise.all([
+              fetch("/run/status?run_id=" + encodeURIComponent(selectedRunId)),
+              fetch("/output/" + runItem.summary_file),
+              fetch("/output/" + runItem.results_file),
+            ]);
+
+            if (statusResp.ok) {
+              const statusData = await statusResp.json();
+              setStatusBadge(statusData.runtime_status || "unknown");
+            } else {
+              setStatusBadge("unknown");
+            }
+
+            const summary = summaryResp.ok ? await summaryResp.json() : {};
+            cachedRows = resultsResp.ok ? parseJsonl(await resultsResp.text()) : [];
+
+            if (metaText) {
+              metaText.textContent =
+                "run=" +
+                selectedRunId +
+                " | actual_rows=" +
+                String(summary.actual_rows ?? cachedRows.length) +
+                " | error_rate=" +
+                (typeof summary.error_rate === "number" ? summary.error_rate.toFixed(3) : "-") +
+                " | refusal_rate=" +
+                (typeof summary.refusal_rate === "number" ? summary.refusal_rate.toFixed(3) : "-") +
+                " | 指标趋势按 turn 聚合（跨 dialogue 求均值）";
+            }
+
+            if (kpiActualRows) kpiActualRows.textContent = String(summary.actual_rows ?? cachedRows.length ?? "-");
+            if (kpiErrorRate) kpiErrorRate.textContent = typeof summary.error_rate === "number" ? (summary.error_rate * 100).toFixed(2) + "%" : "-";
+            if (kpiRefusalRate) kpiRefusalRate.textContent = typeof summary.refusal_rate === "number" ? (summary.refusal_rate * 100).toFixed(2) + "%" : "-";
+            if (kpiGenLatency) kpiGenLatency.textContent = meanLatency(cachedRows, "gen_latency_ms");
+            if (kpiJudgeLatency) kpiJudgeLatency.textContent = meanLatency(cachedRows, "judge_latency_ms");
+
+            renderCountList(distError, cachedRows, (row) => String(row.error_stage || "ok"));
+            renderCountList(distRefusal, cachedRows, (row) => (row.refusal_detected ? "true" : "false"));
+            renderCountList(distDomain, cachedRows, (row) => String(row.domain || "unknown"));
+            renderTrendCharts(cachedRows);
+          } catch (error) {
+            if (metaText) metaText.textContent = "Refresh failed: " + String(error.message || error);
+            setStatusBadge("error");
+          }
+        }
+
+        if (refreshBtn) refreshBtn.addEventListener("click", refresh);
+        syncLinks(selectedRunId);
+        refresh();
+      })();
+    </script>
+  </body>
+</html>

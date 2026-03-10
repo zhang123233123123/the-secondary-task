@@ -86,9 +86,15 @@ def _timestamp_utc() -> str:
     return dt.datetime.now(dt.timezone.utc).isoformat()
 
 
-def _judge_messages(prompts: PromptsBundle, model_reply: str) -> list[dict[str, str]]:
+def _judge_messages(
+    prompts: PromptsBundle,
+    model_reply: str,
+    *,
+    user_text: str,
+) -> list[dict[str, str]]:
     all_keys = [*JUDGE_KEYS_1_TO_10, *JUDGE_KEYS_1_TO_5]
     user_content = (
+        f"User text:\n{user_text}\n\n"
         f"Rubric:\n{prompts.judge_rubric}\n\n"
         f"Model reply to evaluate:\n{model_reply}\n\n"
         f"Return only JSON with keys: {', '.join(all_keys)}."
@@ -354,7 +360,11 @@ def run_experiment(
                         try:
                             judge_result = _call_with_retry(
                                 lambda: llm4_client.chat(
-                                    _judge_messages(prompts, model_reply),
+                                    _judge_messages(
+                                        prompts,
+                                        model_reply,
+                                        user_text=user_text,
+                                    ),
                                     config.timeout_seconds,
                                 ),
                                 retries=config.retries,

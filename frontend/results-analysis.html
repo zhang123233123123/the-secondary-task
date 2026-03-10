@@ -100,7 +100,7 @@
             >
             <a
               class="text-white text-sm font-medium bg-primary/10 px-3 py-1.5 rounded-lg border border-primary/20"
-              href="/frontend/results-analysis.html"
+              href="/frontend/analysis.html"
               >实验</a
             >
             <a
@@ -141,9 +141,9 @@
       <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div class="space-y-1">
           <div class="flex items-center gap-2 text-sm text-slate-400">
-            <a id="results-breadcrumb-exp" class="hover:text-primary transition-colors" href="/frontend/results-analysis.html">实验</a>
+            <a id="results-breadcrumb-exp" class="hover:text-primary transition-colors" href="/frontend/analysis.html">实验</a>
             <span class="material-symbols-outlined text-[12px] opacity-50">chevron_right</span>
-            <a id="results-breadcrumb-run" class="hover:text-primary transition-colors" href="/frontend/results-analysis.html">运行</a>
+            <a id="results-breadcrumb-run" class="hover:text-primary transition-colors" href="/frontend/analysis.html">运行</a>
             <span class="material-symbols-outlined text-[12px] opacity-50">chevron_right</span>
             <span class="text-white font-medium">分析</span>
           </div>
@@ -278,20 +278,38 @@
                   class="px-6 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider text-right"
                   scope="col"
                 >
-                  Harm Score
+                  Harm (1-10)
                 </th>
                 <th
                   class="px-6 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider text-right"
                   scope="col"
                 >
-                  情绪性 Score
+                  情绪性 (1-10)
+                </th>
+                <th
+                  class="px-6 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider text-right"
+                  scope="col"
+                >
+                  Inappropriate (1-10)
+                </th>
+                <th
+                  class="px-6 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider text-right"
+                  scope="col"
+                >
+                  Empathic (1-10)
+                </th>
+                <th
+                  class="px-6 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider text-right"
+                  scope="col"
+                >
+                  Anthro AVG (1-5)
                 </th>
                 <th class="px-6 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider text-right" scope="col">错误阶段</th>
               </tr>
             </thead>
             <tbody id="results-table-body" class="bg-surface-dark divide-y divide-border-dark text-sm">
               <tr>
-                <td colspan="8" class="px-6 py-6 text-center text-slate-500">正在加载结果...</td>
+                <td colspan="11" class="px-6 py-6 text-center text-slate-500">正在加载结果...</td>
               </tr>
             </tbody>
           </table>
@@ -402,9 +420,9 @@
           if (settingsLink) settingsLink.href = withRunId("/frontend/settings-api.html", runId);
           if (prepLink) prepLink.href = withRunId("/frontend/data-preparation.html", runId);
           if (configLink) configLink.href = withRunId("/frontend/configuration.html", runId);
-          if (breadcrumbExp) breadcrumbExp.href = withRunId("/frontend/results-analysis.html", runId);
+          if (breadcrumbExp) breadcrumbExp.href = withRunId("/frontend/analysis.html", runId);
           if (breadcrumbRun) {
-            breadcrumbRun.href = withRunId("/frontend/results-analysis.html", runId);
+            breadcrumbRun.href = withRunId("/frontend/analysis.html", runId);
             breadcrumbRun.textContent = runId ? runId : "运行";
           }
         }
@@ -470,6 +488,22 @@
             .replaceAll(">", "&gt;");
         }
 
+        function scoreOrDash(value) {
+          if (value === null || value === undefined || value === "") return "-";
+          const parsed = Number(value);
+          return Number.isFinite(parsed) ? String(parsed) : "-";
+        }
+
+        function anthroAvgOrDash(row) {
+          const values = [row.anthro_q1, row.anthro_q2, row.anthro_q3, row.anthro_q4, row.anthro_q5]
+            .filter((x) => x !== null && x !== undefined && x !== "")
+            .map((x) => Number(x))
+            .filter((x) => Number.isFinite(x));
+          if (!values.length) return "-";
+          const avg = values.reduce((sum, x) => sum + x, 0) / values.length;
+          return avg.toFixed(1);
+        }
+
         function renderRows() {
           const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
           if (currentPage > totalPages) currentPage = totalPages;
@@ -486,13 +520,16 @@
           if (!tableBody) return;
           if (!limited.length) {
             tableBody.innerHTML =
-              '<tr><td colspan="8" class="px-6 py-6 text-center text-slate-500">当前筛选下无数据。</td></tr>';
+              '<tr><td colspan="11" class="px-6 py-6 text-center text-slate-500">当前筛选下无数据。</td></tr>';
             return;
           }
           tableBody.innerHTML = limited
             .map((row, idx) => {
-              const harm = row.harm === null || row.harm === undefined ? "-" : row.harm;
-              const emotion = row.emotion === null || row.emotion === undefined ? "-" : row.emotion;
+              const harm = scoreOrDash(row.harm_1_10);
+              const emotion = scoreOrDash(row.negative_emotion_1_10);
+              const inappropriate = scoreOrDash(row.inappropriate_1_10);
+              const empathic = scoreOrDash(row.empathic_language_1_10);
+              const anthroAvg = anthroAvgOrDash(row);
               return `
                 <tr class="group hover:bg-slate-800/50 transition-colors">
                   <td class="px-6 py-3 whitespace-nowrap text-slate-500 font-mono text-xs">${String(start + idx + 1).padStart(2, "0")}</td>
@@ -502,6 +539,9 @@
                   <td class="px-6 py-3 whitespace-nowrap text-slate-400 font-mono">${esc(row.turn_index)}</td>
                   <td class="px-6 py-3 whitespace-nowrap text-right font-mono text-slate-300">${esc(harm)}</td>
                   <td class="px-6 py-3 whitespace-nowrap text-right font-mono text-slate-300">${esc(emotion)}</td>
+                  <td class="px-6 py-3 whitespace-nowrap text-right font-mono text-slate-300">${esc(inappropriate)}</td>
+                  <td class="px-6 py-3 whitespace-nowrap text-right font-mono text-slate-300">${esc(empathic)}</td>
+                  <td class="px-6 py-3 whitespace-nowrap text-right font-mono text-slate-300">${esc(anthroAvg)}</td>
                   <td class="px-6 py-3 whitespace-nowrap text-right text-xs text-slate-500">${esc(row.error_stage ?? "none")}</td>
                 </tr>
               `;

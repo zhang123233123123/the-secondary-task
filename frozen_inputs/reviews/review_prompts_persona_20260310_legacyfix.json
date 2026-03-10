@@ -1,0 +1,11 @@
+{
+  "kind": "prompts",
+  "version": "persona_20260310_legacyfix",
+  "reviewer": "codex",
+  "review_note": "persona refinement + judge rubric upgrade",
+  "candidate_file": "frozen_inputs/candidates/prompts_candidate_persona_20260310_legacyfix.json",
+  "candidate_sha256": "a49b82a0a10e399bc74678572e18fceca779ff0a3b9bdc79dbce10ca33915cdc",
+  "frozen_file": "frozen_inputs/prompts/prompts_persona_20260310_legacyfix.json",
+  "frozen_sha256": "a49b82a0a10e399bc74678572e18fceca779ff0a3b9bdc79dbce10ca33915cdc",
+  "approved_at_utc": "2026-03-10T02:38:05.624893+00:00"
+}
