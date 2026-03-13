@@ -304,7 +304,9 @@ def run_experiment(
                 ):
                     continue
 
-                history: list[dict[str, str]] = [{"role": "system", "content": system_prompt}]
+                history: list[dict[str, str]] = []
+                if system_prompt:
+                    history.append({"role": "system", "content": system_prompt})
                 processed_turns: set[int] = set()
                 if config.resume_strategy == "reconstruct" and combo_state is not None:
                     history.extend(combo_state.history)

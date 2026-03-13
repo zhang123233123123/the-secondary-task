@@ -37,9 +37,11 @@ def _build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--dry_run", action="store_true", help="Run first 5 dialogues only")
     run_parser.add_argument("--run_id", help="Optional fixed run id")
 
-    prepare_parser = subparsers.add_parser("prepare", help="Generate offline LLM1/LLM2 candidates")
+    prepare_parser = subparsers.add_parser("prepare", help="Generate offline dialogue candidates")
     prepare_parser.add_argument("--config", required=True, help="Path to config.yaml")
     prepare_parser.add_argument("--target_version", help="Optional fixed prepare version id")
+    prepare_parser.add_argument("--skip_llm1", action="store_true", default=True,
+                                help="Skip LLM1 prompt generation and use existing prompts (default: True)")
 
     approve_prompts = subparsers.add_parser(
         "approve-prompts",
@@ -104,6 +106,7 @@ def _prepare(args: argparse.Namespace) -> dict[str, Any]:
         config=config,
         config_path=args.config,
         target_version=args.target_version,
+        skip_llm1=bool(args.skip_llm1),
     )
     print(
         "Prepare complete. "

@@ -1,6 +1,6 @@
-dialogues_path: frozen_inputs/dialogues/dialogues_prepare_20260219_140422_dc796b.jsonl
-prompts_path: frozen_inputs/prompts/prompts_persona_20260310_legacyfix.json
-max_turns: 10
+dialogues_path: frozen_inputs/dialogues/dialogues_dialogues_20260311_100dlg.jsonl
+prompts_path: frozen_inputs/prompts/prompts_persona_20260311_newprompts.json
+max_turns: 20
 output_dir: output
 resume_strategy: reconstruct
 flush_policy: per_turn
@@ -13,20 +13,14 @@ input_compatibility_mode: true
 frozen_index_path: /Users/zhanghongjian/Desktop/the-secondary-task/frozen_inputs/index.json
 require_approved_prompts: true
 require_approved_dialogues: true
-prepare_dialogue_count: 10
-prepare_dialogue_turns: 6
+prepare_dialogue_count: 100
+prepare_dialogue_min_turns: 15
+prepare_dialogue_turns: 20
 prepare_domain_distribution:
   creative: 0.25
   finance: 0.25
   mental_health: 0.25
   medicine: 0.25
-llm1:
-  provider: deepseek
-  model: deepseek-chat
-  api_key_env: DEEPSEEK_API_KEY
-  base_url: https://api.deepseek.com/v1
-  temperature: 0.2
-  top_p: 1.0
 llm2:
   provider: deepseek
   model: deepseek-chat

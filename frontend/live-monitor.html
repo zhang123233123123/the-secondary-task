@@ -181,6 +181,13 @@
           配置
         </a>
         <button
+          id="monitor-prompts-btn"
+          class="flex items-center justify-center rounded-md h-8 px-3 bg-accent-purple/10 text-accent-purple border border-accent-purple/20 hover:bg-accent-purple/20 transition-colors text-xs font-bold uppercase tracking-wider"
+        >
+          <span class="material-symbols-outlined text-[16px] mr-1.5">description</span>
+          Prompts
+        </button>
+        <button
           id="monitor-refresh-btn"
           class="flex items-center justify-center rounded-md h-8 px-3 bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors text-xs font-bold uppercase tracking-wider"
         >
@@ -419,6 +426,33 @@
         <div class="text-slate-500">等待日志行...</div>
       </div>
     </footer>
+    <!-- Prompts Modal Overlay -->
+    <div id="prompts-modal" class="fixed inset-0 z-50 hidden">
+      <div id="prompts-modal-backdrop" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+      <div class="absolute inset-4 md:inset-8 lg:inset-12 flex flex-col bg-surface-dark border border-surface-border rounded-xl shadow-2xl overflow-hidden">
+        <!-- Modal Header -->
+        <div class="flex items-center justify-between px-6 py-4 border-b border-surface-border bg-background-dark/80">
+          <div class="flex items-center gap-3">
+            <span class="material-symbols-outlined text-accent-purple text-[22px]">description</span>
+            <h2 class="text-white text-lg font-bold">Prompts & Rubrics</h2>
+            <span id="prompts-modal-file" class="text-xs font-mono text-slate-500 ml-2"></span>
+          </div>
+          <button id="prompts-modal-close" class="flex items-center justify-center size-8 rounded-md hover:bg-surface-border text-slate-400 hover:text-white transition-colors">
+            <span class="material-symbols-outlined text-[20px]">close</span>
+          </button>
+        </div>
+        <!-- Modal Tabs -->
+        <div class="flex border-b border-surface-border bg-surface-dark px-4 gap-1" id="prompts-tabs">
+          <!-- tabs are rendered dynamically -->
+        </div>
+        <!-- Modal Body -->
+        <div id="prompts-modal-body" class="flex-1 overflow-y-auto p-6">
+          <div class="flex justify-center items-center h-full">
+            <span class="text-sm text-slate-500 font-mono">Loading prompts...</span>
+          </div>
+        </div>
+      </div>
+    </div>
     <script>
       (function () {
         const refreshBtn = document.getElementById("monitor-refresh-btn");
@@ -799,6 +833,137 @@
         syncLinks(selectedRunId);
         refreshMonitor();
         startPolling();
+      })();
+
+      /* ---- Prompts Modal Logic ---- */
+      (function () {
+        const modal = document.getElementById("prompts-modal");
+        const backdrop = document.getElementById("prompts-modal-backdrop");
+        const closeBtn = document.getElementById("prompts-modal-close");
+        const openBtn = document.getElementById("monitor-prompts-btn");
+        const tabsEl = document.getElementById("prompts-tabs");
+        const bodyEl = document.getElementById("prompts-modal-body");
+        const fileEl = document.getElementById("prompts-modal-file");
+        let promptsData = null;
+        let activeTab = null;
+
+        function openModal() {
+          modal.classList.remove("hidden");
+          document.body.style.overflow = "hidden";
+          if (!promptsData) fetchPrompts();
+        }
+        function closeModal() {
+          modal.classList.add("hidden");
+          document.body.style.overflow = "";
+        }
+        if (openBtn) openBtn.addEventListener("click", openModal);
+        if (closeBtn) closeBtn.addEventListener("click", closeModal);
+        if (backdrop) backdrop.addEventListener("click", closeModal);
+        document.addEventListener("keydown", function (e) {
+          if (e.key === "Escape" && !modal.classList.contains("hidden")) closeModal();
+        });
+
+        function escHtml(s) {
+          return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
+        async function fetchPrompts() {
+          try {
+            const resp = await fetch("/inputs/prompts");
+            if (!resp.ok) throw new Error("HTTP " + resp.status);
+            promptsData = await resp.json();
+            if (fileEl) fileEl.textContent = promptsData.file || "";
+            renderTabs();
+          } catch (err) {
+            bodyEl.innerHTML = '<div class="text-red-400 text-sm font-mono p-4">Failed to load prompts: ' + escHtml(err.message) + "</div>";
+          }
+        }
+
+        function renderTabs() {
+          if (!promptsData) return;
+          const sections = [];
+          /* condition tabs */
+          const conditions = promptsData.conditions || {};
+          Object.keys(conditions).forEach(function (key) {
+            sections.push({ id: "cond_" + key, label: key === "default" ? "default (基准)" : key, type: "condition", key: key });
+          });
+          /* judge tabs */
+          if (promptsData.judge_system) sections.push({ id: "judge_system", label: "Judge System", type: "judge_system" });
+          if (promptsData.judge_rubric) sections.push({ id: "judge_rubric", label: "Judge Rubric", type: "judge_rubric" });
+          if (promptsData.judge_schema) sections.push({ id: "judge_schema", label: "Judge Schema", type: "judge_schema" });
+
+          tabsEl.innerHTML = sections.map(function (s) {
+            return '<button data-tab="' + s.id + '" class="prompts-tab px-4 py-2.5 text-xs font-bold uppercase tracking-wider border-b-2 border-transparent text-slate-400 hover:text-white hover:border-primary/50 transition-colors whitespace-nowrap">' + escHtml(s.label) + "</button>";
+          }).join("");
+
+          tabsEl.querySelectorAll(".prompts-tab").forEach(function (btn) {
+            btn.addEventListener("click", function () {
+              activateTab(btn.dataset.tab, sections);
+            });
+          });
+
+          if (sections.length) activateTab(sections[0].id, sections);
+        }
+
+        function activateTab(tabId, sections) {
+          activeTab = tabId;
+          tabsEl.querySelectorAll(".prompts-tab").forEach(function (btn) {
+            if (btn.dataset.tab === tabId) {
+              btn.classList.add("border-primary", "text-white");
+              btn.classList.remove("border-transparent", "text-slate-400");
+            } else {
+              btn.classList.remove("border-primary", "text-white");
+              btn.classList.add("border-transparent", "text-slate-400");
+            }
+          });
+          const section = sections.find(function (s) { return s.id === tabId; });
+          if (!section) return;
+          let content = "";
+          if (section.type === "condition") {
+            const text = promptsData.conditions[section.key] || "";
+            if (!text) {
+              content = '<div class="flex flex-col items-center justify-center py-12 gap-3">'
+                + '<span class="material-symbols-outlined text-[48px] text-slate-600">block</span>'
+                + '<p class="text-slate-400 text-sm">该条件 <span class="font-mono text-white">' + escHtml(section.key) + '</span> 未设置系统提示词（空白基准线）。</p>'
+                + "</div>";
+            } else {
+              content = '<div class="space-y-3">'
+                + '<div class="flex items-center gap-2 mb-4">'
+                + '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider '
+                + conditionColor(section.key) + '">' + escHtml(section.key) + '</span>'
+                + '<span class="text-xs text-slate-500 font-mono">' + text.length + ' chars</span>'
+                + '</div>'
+                + '<pre class="whitespace-pre-wrap text-sm text-slate-200 font-mono leading-relaxed bg-background-dark border border-surface-border rounded-lg p-5 max-h-[60vh] overflow-y-auto">' + escHtml(text) + '</pre>'
+                + '</div>';
+            }
+          } else if (section.type === "judge_system") {
+            content = renderJudgeBlock("Judge System Prompt", promptsData.judge_system);
+          } else if (section.type === "judge_rubric") {
+            content = renderJudgeBlock("Judge Rubric", promptsData.judge_rubric);
+          } else if (section.type === "judge_schema") {
+            const raw = typeof promptsData.judge_schema === "string" ? promptsData.judge_schema : JSON.stringify(promptsData.judge_schema, null, 2);
+            content = renderJudgeBlock("Judge Output Schema (JSON)", raw);
+          }
+          bodyEl.innerHTML = content;
+        }
+
+        function conditionColor(key) {
+          var colors = {
+            "default": "bg-slate-700 text-slate-300",
+            "unhelpful": "bg-red-900/60 text-red-300",
+            "cynical": "bg-amber-900/60 text-amber-300",
+            "distant": "bg-blue-900/60 text-blue-300",
+          };
+          return colors[key] || "bg-slate-700 text-slate-300";
+        }
+
+        function renderJudgeBlock(title, text) {
+          if (!text) return '<div class="text-slate-500 text-sm">Not available.</div>';
+          return '<div class="space-y-3">'
+            + '<h3 class="text-sm font-bold text-slate-300 uppercase tracking-wider">' + escHtml(title) + '</h3>'
+            + '<pre class="whitespace-pre-wrap text-sm text-slate-200 font-mono leading-relaxed bg-background-dark border border-surface-border rounded-lg p-5 max-h-[60vh] overflow-y-auto">' + escHtml(text) + '</pre>'
+            + '</div>';
+        }
       })();
     </script>
   </body>

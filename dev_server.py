@@ -273,9 +273,11 @@ class DevRequestHandler(SimpleHTTPRequestHandler):
             "manifest_file": manifest_relative,
             "config_path": job.get("config_path"),
             "target_version": job.get("target_version"),
+            "skip_llm1": job.get("skip_llm1", False),
             "started_at_utc": job.get("started_at_utc"),
             "finished_at_utc": job.get("finished_at_utc"),
             "error": job.get("error"),
+            "progress": job.get("progress"),
         }
         return payload
 
@@ -287,13 +289,21 @@ class DevRequestHandler(SimpleHTTPRequestHandler):
         task_id: str,
         config_path: Path,
         target_version: str | None,
+        skip_llm1: bool,
     ) -> None:
+        def progress_callback(progress: dict) -> None:
+            with cls.jobs_lock:
+                if task_id in cls.prepare_jobs:
+                    cls.prepare_jobs[task_id]["progress"] = progress
+        
         try:
             config = load_config(config_path)
             manifest = prepare_inputs(
                 config=config,
                 config_path=str(config_path),
                 target_version=target_version,
+                skip_llm1=skip_llm1,
+                progress_callback=progress_callback,
             )
             prepare_id = str(manifest.get("prepare_id", target_version or ""))
             manifest_file = Path(manifest.get("prompts_candidate", "")).parent / (
@@ -301,15 +311,37 @@ class DevRequestHandler(SimpleHTTPRequestHandler):
             )
             with cls.jobs_lock:
                 job = cls.prepare_jobs[task_id]
-                job["status"] = "succeeded"
+                job["status"] = "succeeded" if manifest.get("status") == "complete" else "partial"
                 job["prepare_id"] = prepare_id
                 job["manifest_file"] = manifest_file
                 job["finished_at_utc"] = dt.datetime.now(dt.timezone.utc).isoformat()
                 job["error"] = None
         except Exception as exc:  # noqa: BLE001
+            # Try to find partial results manifest
+            prepare_id = None
+            manifest_file = None
+            try:
+                config = load_config(config_path)
+                config_dir = config_path.parent
+                frozen_index = Path(config.frozen_index_path)
+                if not frozen_index.is_absolute():
+                    frozen_index = (config_dir / frozen_index).resolve()
+                candidates_dir = frozen_index.parent / "candidates"
+                # Look for manifest matching target_version or most recent
+                expected_id = target_version or ""
+                if expected_id:
+                    manifest_candidate = candidates_dir / f"prepare_manifest_{expected_id}.json"
+                    if manifest_candidate.exists():
+                        prepare_id = expected_id
+                        manifest_file = manifest_candidate
+            except Exception:  # noqa: BLE001, S110
+                pass  # Failed to find partial results
+            
             with cls.jobs_lock:
                 job = cls.prepare_jobs[task_id]
-                job["status"] = "failed"
+                job["status"] = "partial" if manifest_file else "failed"
+                job["prepare_id"] = prepare_id
+                job["manifest_file"] = manifest_file
                 job["finished_at_utc"] = dt.datetime.now(dt.timezone.utc).isoformat()
                 job["error"] = str(exc)
 
@@ -527,6 +559,36 @@ class DevRequestHandler(SimpleHTTPRequestHandler):
             )
             self._json_response(HTTPStatus.OK, payload)
             return
+        if parsed.path == "/inputs/prompts":
+            query = parse_qs(parsed.query)
+            config_path_raw = str(query.get("config_path", ["config.yaml"])[0])
+            try:
+                config_path = self._resolve_repo_path(root, config_path_raw)
+            except ValueError as exc:
+                self._json_response(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
+                return
+            raw_config = self._load_yaml_dict(config_path)
+            prompts_path_raw = str(raw_config.get("prompts_path", "prompts.json"))
+            try:
+                prompts_path = self._resolve_config_file_path(root, config_path, prompts_path_raw)
+            except ValueError:
+                prompts_path = root / prompts_path_raw
+            if not prompts_path.exists():
+                self._json_response(HTTPStatus.NOT_FOUND, {"error": f"Prompts file not found: {prompts_path_raw}"})
+                return
+            try:
+                content = json.loads(prompts_path.read_text(encoding="utf-8"))
+            except json.JSONDecodeError as exc:
+                self._json_response(HTTPStatus.BAD_REQUEST, {"error": f"Invalid prompts JSON: {exc}"})
+                return
+            self._json_response(HTTPStatus.OK, {
+                "file": self._relative_to_root(root, prompts_path, prompts_path_raw),
+                "conditions": content.get("conditions", {}),
+                "judge_system": content.get("judge_system", ""),
+                "judge_rubric": content.get("judge_rubric", ""),
+                "judge_schema": content.get("judge_schema", {}),
+            })
+            return
         if parsed.path == "/inputs/status":
             query = parse_qs(parsed.query)
             config_path_raw = str(query.get("config_path", ["config.yaml"])[0])
@@ -729,6 +791,7 @@ class DevRequestHandler(SimpleHTTPRequestHandler):
             config_path_raw = str(payload.get("config_path", "config.yaml"))
             target_version_raw = payload.get("target_version")
             target_version = str(target_version_raw).strip() if target_version_raw else None
+            skip_llm1 = bool(payload.get("skip_llm1", True))
             try:
                 config_path = self._resolve_repo_path(root, config_path_raw)
             except ValueError as exc:
@@ -741,7 +804,8 @@ class DevRequestHandler(SimpleHTTPRequestHandler):
                 )
                 return
             raw_config = self._load_yaml_dict(config_path)
-            missing_keys = self._missing_api_keys_for_roles(raw_config, ("llm1", "llm2"))
+            roles = ("llm2",) if skip_llm1 else ("llm1", "llm2")
+            missing_keys = self._missing_api_keys_for_roles(raw_config, roles)
             if missing_keys:
                 self._json_response(
                     HTTPStatus.BAD_REQUEST,
@@ -779,6 +843,7 @@ class DevRequestHandler(SimpleHTTPRequestHandler):
                     "manifest_file": None,
                     "config_path": self._relative_to_root(root, config_path, config_path_raw),
                     "target_version": target_version,
+                    "skip_llm1": skip_llm1,
                     "started_at_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
                     "finished_at_utc": None,
                     "error": None,
@@ -791,6 +856,7 @@ class DevRequestHandler(SimpleHTTPRequestHandler):
                         "task_id": task_id,
                         "config_path": config_path,
                         "target_version": target_version,
+                        "skip_llm1": skip_llm1,
                     },
                     daemon=True,
                 )
@@ -804,6 +870,7 @@ class DevRequestHandler(SimpleHTTPRequestHandler):
                     "task_id": task_id,
                     "status": "running",
                     "target_version": target_version,
+                    "skip_llm1": skip_llm1,
                 },
             )
             return

@@ -111,7 +111,10 @@ def load_prompts(path: str | Path) -> PromptsBundle:
     normalized: dict[str, str] = {}
     for key in REQUIRED_CONDITIONS:
         value = conditions.get(key)
-        if not isinstance(value, str) or not value.strip():
+        if not isinstance(value, str):
+            raise ValueError(f"prompts.json.conditions.{key} must be a string")
+        # Allow default to be empty (no system prompt); others must be non-empty
+        if key != "default" and not value.strip():
             raise ValueError(f"prompts.json.conditions.{key} must be a non-empty string")
         normalized[key] = value
 

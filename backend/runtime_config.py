@@ -41,9 +41,10 @@ class RuntimeConfig:
     require_approved_prompts: bool
     require_approved_dialogues: bool
     prepare_dialogue_count: int
+    prepare_dialogue_min_turns: int
     prepare_dialogue_turns: int
     prepare_domain_distribution: dict[str, float]
-    llm1: LLMConfig
+    llm1: LLMConfig | None
     llm2: LLMConfig
     llm3: LLMConfig
     llm4: LLMConfig
@@ -98,9 +99,10 @@ def load_config(path: str | Path) -> RuntimeConfig:
         require_approved_prompts=bool(raw.get("require_approved_prompts", True)),
         require_approved_dialogues=bool(raw.get("require_approved_dialogues", True)),
         prepare_dialogue_count=int(raw.get("prepare_dialogue_count", 2000)),
+        prepare_dialogue_min_turns=int(raw.get("prepare_dialogue_min_turns", 1)),
         prepare_dialogue_turns=int(raw.get("prepare_dialogue_turns", 6)),
         prepare_domain_distribution=normalized_distribution,
-        llm1=_load_llm_config(raw.get("llm1", {}), default_model="deepseek-chat"),
+        llm1=_load_llm_config(raw["llm1"], default_model="deepseek-chat") if "llm1" in raw else None,
         llm2=_load_llm_config(raw.get("llm2", {}), default_model="deepseek-chat"),
         llm3=_load_llm_config(raw.get("llm3", {}), default_model="deepseek-chat"),
         llm4=_load_llm_config(raw.get("llm4", {}), default_model="deepseek-chat"),

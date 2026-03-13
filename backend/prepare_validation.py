@@ -25,13 +25,18 @@ def validate_prepared_dialogues(
     dialogues_payload: list[dict[str, Any]],
     *,
     expected_count: int,
-    expected_turns: int,
+    expected_min_turns: int,
+    expected_max_turns: int,
     expected_distribution: dict[str, float],
 ) -> None:
     if expected_count <= 0:
         raise ValueError("prepare_dialogue_count must be > 0")
-    if expected_turns <= 0:
+    if expected_min_turns <= 0:
+        raise ValueError("prepare_dialogue_min_turns must be > 0")
+    if expected_max_turns <= 0:
         raise ValueError("prepare_dialogue_turns must be > 0")
+    if expected_min_turns > expected_max_turns:
+        raise ValueError("prepare_dialogue_min_turns must be <= prepare_dialogue_turns")
 
     actual_count = len(dialogues_payload)
     if actual_count != expected_count:
@@ -53,9 +58,9 @@ def validate_prepared_dialogues(
         turns = item.get("turns")
         if not isinstance(turns, list):
             raise ValueError(f"dialogue {dialogue_id}: turns must be an array")
-        if len(turns) != expected_turns:
+        if len(turns) < expected_min_turns or len(turns) > expected_max_turns:
             raise ValueError(
-                f"dialogue {dialogue_id}: turn_count_mismatch expected={expected_turns}, actual={len(turns)}"
+                f"dialogue {dialogue_id}: turn_count_out_of_range min={expected_min_turns}, max={expected_max_turns}, actual={len(turns)}"
             )
 
         for turn_index, turn in enumerate(turns, start=1):
@@ -87,4 +92,3 @@ def validate_prepared_dialogues(
             )
     if violations:
         raise ValueError("domain_distribution_mismatch: " + "; ".join(violations))
-

@@ -115,6 +115,15 @@
               placeholder="e.g. prep_20260219_xxxxxx"
             />
           </label>
+          <label class="inline-flex items-center gap-2 text-xs text-text-subtle md:col-span-1">
+            <input
+              id="prep-skip-llm1"
+              type="checkbox"
+              checked
+              class="rounded border-border-dark bg-background-dark"
+            />
+            跳过 LLM1（使用当前 prompts_path）
+          </label>
           <button
             id="prep-start-btn"
             class="h-[38px] rounded bg-primary hover:bg-blue-600 text-white font-semibold text-sm"
@@ -288,9 +297,10 @@
           configLink: document.getElementById("prep-open-config"),
           configPath: document.getElementById("prep-config-path"),
           targetVersion: document.getElementById("prep-target-version"),
+          skipLlm1: document.getElementById("prep-skip-llm1"),
           startBtn: document.getElementById("prep-start-btn"),
           statusMsg: document.getElementById("prep-status-msg"),
-          任务： document.getElementById("prep-current-task"),
+          task: document.getElementById("prep-current-task"),
           manifestFile: document.getElementById("prep-manifest-file"),
           prepareId: document.getElementById("prep-prepare-id"),
           promptsCandidate: document.getElementById("prep-prompts-candidate"),
@@ -445,12 +455,39 @@
           const query = state.taskId ? "?task_id=" + encodeURIComponent(state.taskId) : "";
           const payload = await fetchJson("/prepare/status" + query);
           state.taskId = payload.task_id || state.taskId;
-          if (el.task) el.task.textContent = payload.task_id ? `${payload.task_id} (${payload.status})` : payload.status;
-          if (payload.status === "succeeded" && payload.manifest_file) {
+          
+          // Display detailed progress info
+          let statusText = payload.task_id ? `${payload.task_id} (${payload.status})` : payload.status;
+          if (payload.progress && payload.status === "running") {
+            const p = payload.progress;
+            statusText += ` - Generated: ${p.generated || 0}/${p.target || 0}, Failed: ${p.failed || 0}, Attempts: ${p.attempts || 0}`;
+            if (p.last_error) {
+              statusText += ` | Last error: ${p.last_error.substring(0, 100)}`;
+            }
+          }
+          if (el.task) el.task.textContent = statusText;
+          
+          // Load manifest for both succeeded and partial results
+          if ((payload.status === "succeeded" || payload.status === "partial") && payload.manifest_file) {
             await refreshManifestByFile(payload.manifest_file);
           }
+          
+          if (payload.status === "partial") {
+            let errorMsg = "Prepare partially completed: " + String(payload.error || "generation stopped");
+            if (payload.progress) {
+              const p = payload.progress;
+              errorMsg += ` (Saved: ${p.generated || 0}/${p.target || 0} dialogues)`;
+            }
+            setStatus(errorMsg);
+          }
+          
           if (payload.status === "failed") {
-            setStatus("Prepare failed: " + String(payload.error || "unknown"));
+            let errorMsg = "Prepare failed: " + String(payload.error || "unknown");
+            if (payload.progress) {
+              const p = payload.progress;
+              errorMsg += ` (Generated: ${p.generated || 0}/${p.target || 0}, Failed: ${p.failed || 0})`;
+            }
+            setStatus(errorMsg);
           }
           return payload;
         }
@@ -468,6 +505,7 @@
               body: JSON.stringify({
                 config_path: configPath,
                 target_version: targetVersion || undefined,
+                skip_llm1: !!el.skipLlm1?.checked,
               }),
             });
             state.taskId = payload.task_id;

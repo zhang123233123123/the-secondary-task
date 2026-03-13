@@ -3,7 +3,9 @@ from __future__ import annotations
 import datetime as dt
 import json
 import math
+import random
 import re
+import time
 import uuid
 from pathlib import Path
 from typing import Any
@@ -25,6 +27,7 @@ def _build_prepare_id(target_version: str | None = None) -> str:
 def _extract_json_payload(text: str) -> Any:
     """Extract and parse JSON from LLM response with robust error handling."""
     cleaned = text.strip()
+    original_text = cleaned  # Keep for debugging
     
     # Remove markdown code blocks if present
     if cleaned.startswith("```"):
@@ -64,10 +67,18 @@ def _extract_json_payload(text: str) -> Any:
                 pass
         
         # Provide helpful error message with context
-        error_line = cleaned.split('\n')[exc.lineno - 1] if exc.lineno <= len(cleaned.split('\n')) else ''
+        lines = cleaned.split('\n')
+        error_line = lines[exc.lineno - 1] if 0 < exc.lineno <= len(lines) else ''
+        # Show more context for debugging
+        context_start = max(0, exc.lineno - 3)
+        context_end = min(len(lines), exc.lineno + 2)
+        context_lines = lines[context_start:context_end]
+        context = '\n'.join(f"  {i+context_start+1}: {line[:80]}" for i, line in enumerate(context_lines))
+        
         raise ValueError(
-            f"Invalid JSON from LLM: {exc.msg} at line {exc.lineno}, col {exc.colno}. "
-            f"Context: ...{error_line[:50]}..."
+            f"Invalid JSON from LLM: {exc.msg} at line {exc.lineno}, col {exc.colno}.\\n"
+            f"Context around error:\\n{context}\\n"
+            f"Full text length: {len(original_text)} chars, cleaned: {len(cleaned)} chars"
         ) from exc
 
 
@@ -118,11 +129,11 @@ def _llm1_messages(config: RuntimeConfig) -> list[dict[str, str]]:
 
 
 def _llm2_single_dialogue_messages(
-    config: RuntimeConfig,
     *,
     dialogue_index: int,
     dialogue_count: int,
     domain: str,
+    target_turns: int,
 ) -> list[dict[str, str]]:
     system = (
         "You are LLM2 Dialogue Generator. You MUST return ONLY valid JSON. "
@@ -141,7 +152,7 @@ def _llm2_single_dialogue_messages(
         "}\n\n"
         "CRITICAL JSON RULES:\n"
         f"1. domain MUST be exactly '{domain}'\n"
-        f"2. turns MUST be an array with EXACTLY {config.prepare_dialogue_turns} items\n"
+        f"2. turns MUST be an array with EXACTLY {target_turns} items\n"
         '3. Each turn: {{"role": "user", "text": "non-empty string"}}\n'
         "4. NO trailing commas after last array/object item\n"
         "5. NO comments (// or /* */)\n"
@@ -150,7 +161,24 @@ def _llm2_single_dialogue_messages(
         f"Context: This is dialogue {dialogue_index}/{dialogue_count}"
     )
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
-    return [{"role": "system", "content": system}, {"role": "user", "content": user}]
+
+
+def _build_turn_plan(
+    dialogue_count: int,
+    min_turns: int,
+    max_turns: int,
+    seed: int | None,
+) -> list[int]:
+    if dialogue_count <= 0:
+        return []
+    if min_turns <= 0:
+        raise ValueError("prepare_dialogue_min_turns must be > 0")
+    if max_turns <= 0:
+        raise ValueError("prepare_dialogue_turns must be > 0")
+    if min_turns > max_turns:
+        raise ValueError("prepare_dialogue_min_turns must be <= prepare_dialogue_turns")
+    rng = random.Random(seed) if seed is not None else random.SystemRandom()
+    return [rng.randint(min_turns, max_turns) for _ in range(dialogue_count)]
 
 
 def _build_domain_plan(expected_count: int, distribution: dict[str, float]) -> list[str]:
@@ -255,11 +283,60 @@ def _normalize_llm2_single_dialogue_payload(raw: Any) -> dict[str, Any]:
     raise ValueError("LLM2 single-dialogue payload must be JSON object or single-item array")
 
 
+def _llm2_single_dialogue_with_retry(
+    *,
+    llm2_client: OpenAICompatibleChatClient,
+    config: RuntimeConfig,
+    dialogue_index: int,
+    dialogue_count: int,
+    domain: str,
+    target_turns: int,
+    backoff_seconds: float = 0.5,
+) -> tuple[dict[str, Any], int]:
+    attempts = max(1, int(config.retries) + 1)
+    last_error: Exception | None = None
+    last_error_type: str = ""
+    
+    for attempt in range(1, attempts + 1):
+        try:
+            llm2_result = llm2_client.chat(
+                _llm2_single_dialogue_messages(
+                    dialogue_index=dialogue_index,
+                    dialogue_count=dialogue_count,
+                    domain=domain,
+                    target_turns=target_turns,
+                ),
+                config.timeout_seconds,
+            )
+            dialogue_item = _normalize_llm2_single_dialogue_payload(
+                _extract_json_payload(llm2_result.text)
+            )
+            if attempt > 1:
+                print(f"  [LLM2] Dialogue {dialogue_index}/{dialogue_count} succeeded on attempt {attempt}/{attempts}")
+            return dialogue_item, llm2_result.latency_ms
+        except Exception as exc:  # noqa: BLE001
+            last_error = exc
+            last_error_type = type(exc).__name__
+            error_preview = str(exc)[:150].replace('\n', ' ')
+            print(f"  [LLM2] Dialogue {dialogue_index}/{dialogue_count} attempt {attempt}/{attempts} failed: {last_error_type}: {error_preview}")
+            if attempt < attempts:
+                time.sleep(backoff_seconds * (2 ** (attempt - 1)))
+                continue
+    if last_error is None:
+        raise RuntimeError("Unexpected retry state")
+    raise ValueError(
+        f"LLM2 failed after {attempts} attempts for dialogue {dialogue_index}/{dialogue_count} "
+        f"(domain={domain}, turns={target_turns}): {last_error_type}: {str(last_error)[:200]}"
+    ) from last_error
+
+
 def prepare_inputs(
     *,
     config: RuntimeConfig,
     config_path: str,
     target_version: str | None = None,
+    skip_llm1: bool = False,
+    progress_callback: Any | None = None,
 ) -> dict[str, Any]:
     prepare_id = _build_prepare_id(target_version)
     config_dir = Path(config_path).resolve().parent
@@ -270,45 +347,39 @@ def prepare_inputs(
     candidates_dir = index_path.parent / "candidates"
     candidates_dir.mkdir(parents=True, exist_ok=True)
 
-    llm1_client = OpenAICompatibleChatClient(config.llm1)
     llm2_client = OpenAICompatibleChatClient(config.llm2)
-
-    llm1_result = llm1_client.chat(_llm1_messages(config), config.timeout_seconds)
-
-    prompts_payload = _normalize_llm1_payload(_extract_json_payload(llm1_result.text))
+    llm1_latency_ms: int | None = None
+    # If llm1 config is not available, force skip
+    if config.llm1 is None:
+        skip_llm1 = True
+    if skip_llm1:
+        prompts_path = Path(config.prompts_path)
+        if not prompts_path.is_absolute():
+            prompts_path = (config_dir / prompts_path).resolve()
+        prompts_payload = json.loads(prompts_path.read_text(encoding="utf-8"))
+        # Reuse human-authored prompts, but keep strict structure validation.
+        prompts_payload = _normalize_llm1_payload(prompts_payload)
+        llm1_model = None
+    else:
+        llm1_client = OpenAICompatibleChatClient(config.llm1)
+        llm1_result = llm1_client.chat(_llm1_messages(config), config.timeout_seconds)
+        prompts_payload = _normalize_llm1_payload(_extract_json_payload(llm1_result.text))
+        llm1_latency_ms = llm1_result.latency_ms
+        llm1_model = config.llm1.model
     dialogues_payload: list[dict[str, Any]] = []
     llm2_total_latency_ms = 0
+    llm2_generation_attempts = 0
+    llm2_failed_attempts = 0
     domain_plan = _build_domain_plan(
         config.prepare_dialogue_count,
         config.prepare_domain_distribution,
     )
-    for dialogue_index, domain in enumerate(domain_plan, start=1):
-        llm2_result = llm2_client.chat(
-            _llm2_single_dialogue_messages(
-                config,
-                dialogue_index=dialogue_index,
-                dialogue_count=config.prepare_dialogue_count,
-                domain=domain,
-            ),
-            config.timeout_seconds,
-        )
-        llm2_total_latency_ms += llm2_result.latency_ms
-        dialogue_item = _normalize_llm2_single_dialogue_payload(
-            _extract_json_payload(llm2_result.text)
-        )
-        if not str(dialogue_item.get("dialogue_id", "")).strip():
-            dialogue_item["dialogue_id"] = f"{prepare_id}_dlg_{dialogue_index:05d}"
-        # Enforce requested domain so distribution and review filters remain deterministic.
-        dialogue_item["domain"] = domain
-        dialogues_payload.append(dialogue_item)
-
-    validate_prepared_dialogues(
-        dialogues_payload,
-        expected_count=config.prepare_dialogue_count,
-        expected_turns=config.prepare_dialogue_turns,
-        expected_distribution=config.prepare_domain_distribution,
+    turn_plan = _build_turn_plan(
+        config.prepare_dialogue_count,
+        config.prepare_dialogue_min_turns,
+        config.prepare_dialogue_turns,
+        config.llm2.seed,
     )
-
     prompts_candidate = candidates_dir / f"prompts_candidate_{prepare_id}.json"
     dialogues_candidate = candidates_dir / f"dialogues_candidate_{prepare_id}.jsonl"
     manifest_path = candidates_dir / f"prepare_manifest_{prepare_id}.json"
@@ -318,29 +389,129 @@ def prepare_inputs(
         encoding="utf-8",
     )
 
-    with dialogues_candidate.open("w", encoding="utf-8") as fh:
-        for item in dialogues_payload:
-            fh.write(json.dumps(item, ensure_ascii=False) + "\n")
+    dialogues_candidate.write_text("", encoding="utf-8")
+    max_generation_attempts = max(
+        config.prepare_dialogue_count * max(3, int(config.retries) + 1),
+        config.prepare_dialogue_count,
+    )
+    last_error_msg: str | None = None
+    
+    def report_progress() -> None:
+        if progress_callback:
+            progress_callback({
+                "generated": len(dialogues_payload),
+                "target": config.prepare_dialogue_count,
+                "attempts": llm2_generation_attempts,
+                "failed": llm2_failed_attempts,
+                "last_error": last_error_msg,
+            })
+    
+    report_progress()
+    print(f"[Prepare] Starting dialogue generation: target={config.prepare_dialogue_count}, max_attempts={max_generation_attempts}")
+    
+    generation_error: Exception | None = None
+    try:
+        while len(dialogues_payload) < config.prepare_dialogue_count:
+            if llm2_generation_attempts >= max_generation_attempts:
+                raise ValueError(
+                    "LLM2 could not reach target dialogue count. "
+                    f"generated={len(dialogues_payload)}, target={config.prepare_dialogue_count}, "
+                    f"attempts={llm2_generation_attempts}, failed_attempts={llm2_failed_attempts}, "
+                    f"max_attempts={max_generation_attempts}"
+                )
 
-    # Validate candidates before returning paths.
-    load_prompts(prompts_candidate)
-    load_dialogues(dialogues_candidate, compatibility_mode=False)
+            llm2_generation_attempts += 1
+            dialogue_index = len(dialogues_payload) + 1
+            domain = domain_plan[dialogue_index - 1]
+            target_turns = turn_plan[dialogue_index - 1]
+            try:
+                dialogue_item, latency_ms = _llm2_single_dialogue_with_retry(
+                    llm2_client=llm2_client,
+                    config=config,
+                    dialogue_index=dialogue_index,
+                    dialogue_count=config.prepare_dialogue_count,
+                    domain=domain,
+                    target_turns=target_turns,
+                )
+                last_error_msg = None
+            except Exception as exc:
+                llm2_failed_attempts += 1
+                last_error_msg = str(exc)[:200]
+                report_progress()
+                continue
+
+            llm2_total_latency_ms += latency_ms
+            if not str(dialogue_item.get("dialogue_id", "")).strip():
+                dialogue_item["dialogue_id"] = f"{prepare_id}_dlg_{dialogue_index:05d}"
+            # Enforce requested domain so distribution and review filters remain deterministic.
+            dialogue_item["domain"] = domain
+            dialogues_payload.append(dialogue_item)
+            with dialogues_candidate.open("a", encoding="utf-8") as fh:
+                fh.write(json.dumps(dialogue_item, ensure_ascii=False) + "\n")
+            
+            # Log progress every 10 dialogues or on first/last
+            if len(dialogues_payload) == 1 or len(dialogues_payload) % 10 == 0 or len(dialogues_payload) == config.prepare_dialogue_count:
+                print(f"[Prepare] Progress: {len(dialogues_payload)}/{config.prepare_dialogue_count} dialogues generated, "
+                      f"{llm2_failed_attempts} failed, {llm2_generation_attempts} total attempts")
+            report_progress()
+    except Exception as exc:
+        generation_error = exc
+        print(f"[Prepare] Generation stopped: {type(exc).__name__}: {str(exc)[:200]}")
+        print(f"[Prepare] Saving partial results: {len(dialogues_payload)}/{config.prepare_dialogue_count} dialogues")
+
+    # Always save what we have, even if incomplete
+    is_complete = len(dialogues_payload) == config.prepare_dialogue_count and generation_error is None
+
+    # Always save what we have, even if incomplete
+    is_complete = len(dialogues_payload) == config.prepare_dialogue_count and generation_error is None
+
+    # Only run strict validation if complete
+    if is_complete:
+        validate_prepared_dialogues(
+            dialogues_payload,
+            expected_count=config.prepare_dialogue_count,
+            expected_min_turns=config.prepare_dialogue_min_turns,
+            expected_max_turns=config.prepare_dialogue_turns,
+            expected_distribution=config.prepare_domain_distribution,
+        )
+
+    # Validate file formats regardless
+    if len(dialogues_payload) > 0:
+        load_prompts(prompts_candidate)
+        load_dialogues(dialogues_candidate, compatibility_mode=False)
 
     manifest = {
         "prepare_id": prepare_id,
         "created_at_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+        "status": "complete" if is_complete else "partial",
         "index_path": str(index_path),
         "prompts_candidate": str(prompts_candidate),
         "dialogues_candidate": str(dialogues_candidate),
         "prompts_candidate_sha256": compute_sha256(prompts_candidate),
-        "dialogues_candidate_sha256": compute_sha256(dialogues_candidate),
-        "llm1_model": config.llm1.model,
+        "dialogues_candidate_sha256": compute_sha256(dialogues_candidate) if len(dialogues_payload) > 0 else None,
+        "llm1_model": llm1_model,
         "llm2_model": config.llm2.model,
-        "llm1_latency_ms": llm1_result.latency_ms,
+        "llm1_latency_ms": llm1_latency_ms,
         "llm2_latency_ms": llm2_total_latency_ms,
         "llm2_request_count": len(dialogues_payload),
+        "llm2_generation_attempts": llm2_generation_attempts,
+        "llm2_failed_attempts": llm2_failed_attempts,
         "prepare_dialogue_count": config.prepare_dialogue_count,
-        "prepare_dialogue_turns": config.prepare_dialogue_turns,
+        "prepare_dialogue_count_actual": len(dialogues_payload),
+        "prepare_dialogue_turns_min": config.prepare_dialogue_min_turns,
+        "prepare_dialogue_turns_max": config.prepare_dialogue_turns,
+        "prepare_dialogue_turns_mode": "random_min_to_max",
+        "skip_llm1": skip_llm1,
+        "generation_error": str(generation_error) if generation_error else None,
     }
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    
+    print(f"[Prepare] Manifest saved: {manifest_path.name}")
+    print(f"[Prepare] Results: {len(dialogues_payload)}/{config.prepare_dialogue_count} dialogues, "
+          f"{llm2_failed_attempts} failed, {llm2_generation_attempts} attempts")
+    
+    # Re-raise the error if generation failed, but after saving partial results
+    if generation_error:
+        raise generation_error
+    
     return manifest

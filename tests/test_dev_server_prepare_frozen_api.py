@@ -81,8 +81,10 @@ def test_prepare_start_status_and_candidate_reads(tmp_path, monkeypatch):
     monkeypatch.setenv(key_name, "sk-test-prepare-123")
     _write_prepare_config(tmp_path, key_name)
 
-    def fake_prepare_inputs(*, config, config_path, target_version=None):  # noqa: ANN001
+    def fake_prepare_inputs(*, config, config_path, target_version=None, skip_llm1=False, progress_callback=None):  # noqa: ANN001
         del config
+        del skip_llm1
+        del progress_callback
         config_file = Path(config_path)
         candidates_dir = config_file.parent / "frozen_inputs" / "candidates"
         candidates_dir.mkdir(parents=True, exist_ok=True)
@@ -120,6 +122,7 @@ def test_prepare_start_status_and_candidate_reads(tmp_path, monkeypatch):
         )
         manifest = {
             "prepare_id": prepare_id,
+            "status": "complete",
             "index_path": str(config_file.parent / "frozen_inputs" / "index.json"),
             "prompts_candidate": str(prompts_candidate),
             "dialogues_candidate": str(dialogues_candidate),
@@ -150,7 +153,7 @@ def test_prepare_start_status_and_candidate_reads(tmp_path, monkeypatch):
                 f"/prepare/status?task_id={task_id}",
             )
             assert status_code == 200
-            if status_payload["status"] in {"succeeded", "failed"}:
+            if status_payload["status"] in {"succeeded", "failed", "partial"}:
                 final = status_payload
                 break
             time.sleep(0.05)

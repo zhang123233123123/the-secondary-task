@@ -1,0 +1,11 @@
+{
+  "kind": "prompts",
+  "version": "persona_20260311_newprompts",
+  "reviewer": "codex",
+  "review_note": "Updated personas: default=empty, unhelpful/cynical/distant with detailed instructions",
+  "candidate_file": "frozen_inputs/candidates/prompts_candidate_persona_20260310_legacyfix.json",
+  "candidate_sha256": "a75e94cff655d293463e2563eb680a95da9fb7dc8cddf8fe61f138620be887c2",
+  "frozen_file": "frozen_inputs/prompts/prompts_persona_20260311_newprompts.json",
+  "frozen_sha256": "a75e94cff655d293463e2563eb680a95da9fb7dc8cddf8fe61f138620be887c2",
+  "approved_at_utc": "2026-03-11T07:30:48.982676+00:00"
+}
