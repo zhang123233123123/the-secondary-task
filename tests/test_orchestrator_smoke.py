@@ -635,3 +635,163 @@ def test_run_experiment_supports_mixed_llm_providers(tmp_path, monkeypatch):
         assert anthro_means[condition]["anthro_q3"] == 1.0
         assert anthro_means[condition]["anthro_q4"] == 1.0
         assert anthro_means[condition]["anthro_q5"] == 1.0
+
+
+def test_run_experiment_supports_openai_generator_with_deepseek_judge(tmp_path, monkeypatch):
+    dialogues_path = tmp_path / "dialogues.jsonl"
+    prompts_path = tmp_path / "prompts.json"
+    config_path = tmp_path / "config.yaml"
+    output_dir = tmp_path / "out"
+
+    dialogues_path.write_text(
+        '{"dialogue_id":"D1","domain":"creative","turns":[{"role":"user","text":"hello"}]}\n',
+        encoding="utf-8",
+    )
+    prompts_path.write_text(
+        json.dumps(
+            {
+                "conditions": {"default": "default", "unhelpful": "unhelpful", "cynical": "cynical", "distant": "distant"},
+                "judge_system": "judge",
+                "judge_rubric": "rubric",
+                "judge_schema": {"type": "object"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    config_path.write_text(
+        "\n".join(
+            [
+                f"dialogues_path: {dialogues_path}",
+                f"prompts_path: {prompts_path}",
+                f"output_dir: {output_dir}",
+                "max_turns: 10",
+                "resume_strategy: reconstruct",
+                "flush_policy: per_turn",
+                "retries: 0",
+                "timeout: 5",
+                "truncation_policy: sliding_window",
+                "abort_on_error: false",
+                "input_compatibility_mode: false",
+                "max_history_messages: 20",
+                "require_approved_prompts: false",
+                "require_approved_dialogues: false",
+                "llm3:",
+                "  provider: openai",
+                "  model: gpt-4.1-mini",
+                "  api_key_env: OPENAI_API_KEY",
+                "  base_url: https://api.openai.com/v1",
+                "  temperature: 0.1",
+                "  top_p: 0.9",
+                "llm4:",
+                "  provider: deepseek",
+                "  model: deepseek-chat",
+                "  api_key_env: DEEPSEEK_API_KEY",
+                "  base_url: https://api.deepseek.com/v1",
+                "  temperature: 0.0",
+                "  top_p: 1.0",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    class _FakeClient:
+        def __init__(self, model: str) -> None:
+            self.model = model
+
+        def chat(self, messages, timeout_seconds):  # noqa: ANN001
+            del messages, timeout_seconds
+            if self.model == "gpt-4.1-mini":
+                return ChatResult(text="openai answer", latency_ms=5, raw={})
+            return ChatResult(
+                text='{"harm_1_10":1,"negative_emotion_1_10":1,"inappropriate_1_10":1,"empathic_language_1_10":1,"anthro_q1":1,"anthro_q2":1,"anthro_q3":1,"anthro_q4":1,"anthro_q5":1}',
+                latency_ms=4,
+                raw={},
+            )
+
+    monkeypatch.setattr("backend.orchestrator.build_chat_client", lambda llm_config: _FakeClient(llm_config.model))
+
+    config = load_config(config_path)
+    result = run_experiment(config=config, config_path=str(config_path), dry_run=False, run_id="openai_case")
+    row = json.loads(Path(result["results_path"]).read_text(encoding="utf-8").splitlines()[0])
+    assert row["llm3_provider"] == "openai"
+    assert row["llm4_provider"] == "deepseek"
+
+
+def test_run_experiment_supports_gemini_generator_with_deepseek_judge(tmp_path, monkeypatch):
+    dialogues_path = tmp_path / "dialogues.jsonl"
+    prompts_path = tmp_path / "prompts.json"
+    config_path = tmp_path / "config.yaml"
+    output_dir = tmp_path / "out"
+
+    dialogues_path.write_text(
+        '{"dialogue_id":"D1","domain":"creative","turns":[{"role":"user","text":"hello"}]}\n',
+        encoding="utf-8",
+    )
+    prompts_path.write_text(
+        json.dumps(
+            {
+                "conditions": {"default": "default", "unhelpful": "unhelpful", "cynical": "cynical", "distant": "distant"},
+                "judge_system": "judge",
+                "judge_rubric": "rubric",
+                "judge_schema": {"type": "object"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    config_path.write_text(
+        "\n".join(
+            [
+                f"dialogues_path: {dialogues_path}",
+                f"prompts_path: {prompts_path}",
+                f"output_dir: {output_dir}",
+                "max_turns: 10",
+                "resume_strategy: reconstruct",
+                "flush_policy: per_turn",
+                "retries: 0",
+                "timeout: 5",
+                "truncation_policy: sliding_window",
+                "abort_on_error: false",
+                "input_compatibility_mode: false",
+                "max_history_messages: 20",
+                "require_approved_prompts: false",
+                "require_approved_dialogues: false",
+                "llm3:",
+                "  provider: gemini",
+                "  model: gemini-2.0-flash",
+                "  api_key_env: GEMINI_API_KEY",
+                "  base_url: https://generativelanguage.googleapis.com/v1beta",
+                "  temperature: 0.1",
+                "  top_p: 0.9",
+                "llm4:",
+                "  provider: deepseek",
+                "  model: deepseek-chat",
+                "  api_key_env: DEEPSEEK_API_KEY",
+                "  base_url: https://api.deepseek.com/v1",
+                "  temperature: 0.0",
+                "  top_p: 1.0",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    class _FakeClient:
+        def __init__(self, model: str) -> None:
+            self.model = model
+
+        def chat(self, messages, timeout_seconds):  # noqa: ANN001
+            del messages, timeout_seconds
+            if self.model == "gemini-2.0-flash":
+                return ChatResult(text="gemini answer", latency_ms=5, raw={})
+            return ChatResult(
+                text='{"harm_1_10":1,"negative_emotion_1_10":1,"inappropriate_1_10":1,"empathic_language_1_10":1,"anthro_q1":1,"anthro_q2":1,"anthro_q3":1,"anthro_q4":1,"anthro_q5":1}',
+                latency_ms=4,
+                raw={},
+            )
+
+    monkeypatch.setattr("backend.orchestrator.build_chat_client", lambda llm_config: _FakeClient(llm_config.model))
+
+    config = load_config(config_path)
+    result = run_experiment(config=config, config_path=str(config_path), dry_run=False, run_id="gemini_case")
+    row = json.loads(Path(result["results_path"]).read_text(encoding="utf-8").splitlines()[0])
+    assert row["llm3_provider"] == "gemini"
+    assert row["llm4_provider"] == "deepseek"

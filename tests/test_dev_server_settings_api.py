@@ -35,6 +35,8 @@ def _request_json(base_url: str, path: str, method: str = "GET", payload: dict |
 
 def test_settings_apikey_status_env_only(tmp_path, monkeypatch):
     monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     server, thread, base_url = _start_server(tmp_path)
     try:
         status_code, payload = _request_json(base_url, "/settings/apikey/status")
@@ -45,7 +47,7 @@ def test_settings_apikey_status_env_only(tmp_path, monkeypatch):
             base_url,
             "/settings/apikey",
             method="POST",
-            payload={"deepseek_api_key": "sk-test-1234567890"},
+            payload={"env_key": "DEEPSEEK_API_KEY", "api_key": "sk-test-1234567890"},
         )
         assert post_code == 200
         assert post_payload["ok"] is True
@@ -55,7 +57,8 @@ def test_settings_apikey_status_env_only(tmp_path, monkeypatch):
         status_code, payload = _request_json(base_url, "/settings/apikey/status")
         assert status_code == 200
         assert payload["configured"] is True
-        assert payload["source"] == "process_env"
+        key_payload = {item["env_key"]: item for item in payload["keys"]}
+        assert key_payload["DEEPSEEK_API_KEY"]["source"] == "process_env"
     finally:
         server.shutdown()
         server.server_close()
@@ -69,8 +72,9 @@ def test_settings_apikey_status_uses_process_env(tmp_path, monkeypatch):
         status_code, payload = _request_json(base_url, "/settings/apikey/status")
         assert status_code == 200
         assert payload["configured"] is True
-        assert payload["source"] == "process_env"
-        assert payload["masked_key"] is not None
+        key_payload = {item["env_key"]: item for item in payload["keys"]}
+        assert key_payload["DEEPSEEK_API_KEY"]["source"] == "process_env"
+        assert key_payload["DEEPSEEK_API_KEY"]["masked_key"] is not None
     finally:
         server.shutdown()
         server.server_close()
@@ -89,7 +93,7 @@ def test_settings_apikey_clear(tmp_path, monkeypatch):
             base_url,
             "/settings/apikey",
             method="POST",
-            payload={"clear": True},
+            payload={"env_key": "DEEPSEEK_API_KEY", "clear": True},
         )
         assert post_code == 200
         assert post_payload["ok"] is True
@@ -112,7 +116,7 @@ def test_settings_apikey_rejects_empty_value(tmp_path, monkeypatch):
             base_url,
             "/settings/apikey",
             method="POST",
-            payload={"deepseek_api_key": ""},
+            payload={"env_key": "DEEPSEEK_API_KEY", "api_key": ""},
         )
         assert status_code == 400
         assert "non-empty string" in payload["error"]
@@ -120,6 +124,63 @@ def test_settings_apikey_rejects_empty_value(tmp_path, monkeypatch):
         server.shutdown()
         server.server_close()
         thread.join(timeout=2)
+
+
+def test_settings_apikey_supports_multiple_keys(tmp_path, monkeypatch):
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    server, thread, base_url = _start_server(tmp_path)
+    try:
+        openai_code, openai_payload = _request_json(
+            base_url,
+            "/settings/apikey",
+            method="POST",
+            payload={"env_key": "OPENAI_API_KEY", "api_key": "sk-openai-test-123456"},
+        )
+        assert openai_code == 200
+        assert openai_payload["required_env_key"] == "OPENAI_API_KEY"
+
+        gemini_code, gemini_payload = _request_json(
+            base_url,
+            "/settings/apikey",
+            method="POST",
+            payload={"env_key": "GEMINI_API_KEY", "api_key": "sk-gemini-test-123456"},
+        )
+        assert gemini_code == 200
+        assert gemini_payload["required_env_key"] == "GEMINI_API_KEY"
+
+        status_code, payload = _request_json(base_url, "/settings/apikey/status")
+        assert status_code == 200
+        key_payload = {item["env_key"]: item for item in payload["keys"]}
+        assert key_payload["OPENAI_API_KEY"]["configured"] is True
+        assert key_payload["GEMINI_API_KEY"]["configured"] is True
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
+def test_apply_overrides_resets_llm4_to_deepseek_settings():
+    merged = DevRequestHandler._apply_overrides(
+        {
+            "llm3": {
+                "provider": "deepseek",
+                "model": "deepseek-chat",
+                "api_key_env": "DEEPSEEK_API_KEY",
+                "base_url": "https://api.deepseek.com/v1",
+            },
+            "llm4": {
+                "provider": "openai",
+                "model": "gpt-4.1-mini",
+                "api_key_env": "OPENAI_API_KEY",
+                "base_url": "https://api.openai.com/v1",
+            },
+        },
+        {"generator_provider": "gemini"},
+    )
+    assert merged["llm4"]["provider"] == "deepseek"
+    assert merged["llm4"]["api_key_env"] == "DEEPSEEK_API_KEY"
+    assert merged["llm4"]["base_url"] == "https://api.deepseek.com/v1"
 
 
 def test_run_start_rejects_missing_api_key(tmp_path):

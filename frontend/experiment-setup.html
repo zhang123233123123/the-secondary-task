@@ -298,6 +298,35 @@
               <div class="flex flex-col gap-2">
                 <label
                   class="text-sm font-medium text-white flex items-center justify-between"
+                  for="setup-generator-provider"
+                >
+                  Generator Provider
+                  <span
+                    class="material-symbols-outlined text-text-subtle text-[16px] cursor-help"
+                    title="Select the provider for llm3 generation"
+                    >info</span
+                  >
+                </label>
+                <div class="relative">
+                  <select
+                    id="setup-generator-provider"
+                    class="w-full appearance-none bg-background-dark border border-border-dark text-white rounded-lg py-3 px-4 pr-10 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow"
+                  >
+                    <option value="deepseek">DeepSeek</option>
+                    <option value="openai">OpenAI / ChatGPT</option>
+                    <option value="gemini">Gemini</option>
+                  </select>
+                  <div
+                    class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-text-subtle"
+                  >
+                    <span class="material-symbols-outlined">expand_more</span>
+                  </div>
+                </div>
+                <span class="text-xs text-text-subtle">llm3 runtime provider.</span>
+              </div>
+              <div class="flex flex-col gap-2">
+                <label
+                  class="text-sm font-medium text-white flex items-center justify-between"
                 >
                   Generator Model
                   <span
@@ -322,7 +351,7 @@
                 </div>
                 <span class="text-xs text-text-subtle">The primary subject for style drift.</span>
               </div>
-              <div class="flex flex-col gap-2">
+              <div class="flex flex-col gap-2 md:col-span-2">
                 <label
                   class="text-sm font-medium text-white flex items-center justify-between"
                 >
@@ -347,7 +376,7 @@
                     <span class="material-symbols-outlined">expand_more</span>
                   </div>
                 </div>
-                <span class="text-xs text-text-subtle">Evaluator for output consistency.</span>
+                <span class="text-xs text-text-subtle">llm4 is fixed to DeepSeek for judging.</span>
               </div>
             </div>
             <hr class="border-border-dark/50" />
@@ -505,6 +534,7 @@
         const startBtn = document.getElementById("initialize-run-btn");
         const saveDraftBtn = document.getElementById("setup-save-draft-btn");
         const dryRunCheckbox = document.getElementById("dry-run-checkbox");
+        const generatorProviderInput = document.getElementById("setup-generator-provider");
         const generatorModelInput = document.getElementById("setup-generator-model");
         const judgeModelInput = document.getElementById("setup-judge-model");
         const temperatureInput = document.getElementById("setup-temperature");
@@ -544,6 +574,22 @@
         const configPath = params.get("config_path") || DEFAULT_CONFIG_PATH;
         let statusTimerId = null;
         let defaultsLoaded = false;
+        const providerModelOptions = {
+          deepseek: [
+            { value: "deepseek-chat", label: "DeepSeek Chat" },
+            { value: "deepseek-reasoner", label: "DeepSeek Reasoner" },
+          ],
+          openai: [
+            { value: "gpt-4.1-mini", label: "GPT-4.1 Mini" },
+            { value: "gpt-4.1", label: "GPT-4.1" },
+            { value: "gpt-4o", label: "GPT-4o" },
+          ],
+          gemini: [
+            { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
+            { value: "gemini-2.0-pro", label: "Gemini 2.0 Pro" },
+            { value: "gemini-1.5-pro", label: "Gemini 1.5 Pro" },
+          ],
+        };
 
         function withRunId(path, runId) {
           const q = new URLSearchParams();
@@ -615,7 +661,9 @@
           const maxTurns = Number.isFinite(maxTurnsRaw) && maxTurnsRaw > 0 ? Math.floor(maxTurnsRaw) : 10;
           const temperatureRaw = Number(temperatureInput?.value ?? 0.7);
           const temperature = Number.isFinite(temperatureRaw) ? temperatureRaw : 0.7;
+          const generatorProvider = generatorProviderInput?.value || "deepseek";
           return {
+            generator_provider: generatorProvider,
             generator_model: generatorModelInput?.value || "deepseek-chat",
             judge_model: judgeModelInput?.value || "deepseek-chat",
             temperature: Math.max(0, Math.min(1, temperature)),
@@ -625,8 +673,29 @@
           };
         }
 
+        function syncGeneratorModelOptions(selectedProvider, preferredModel) {
+          if (!generatorModelInput) return;
+          const options = providerModelOptions[selectedProvider] || providerModelOptions.deepseek;
+          const currentValue = preferredModel || generatorModelInput.value;
+          generatorModelInput.innerHTML = "";
+          options.forEach(function (option) {
+            const node = document.createElement("option");
+            node.value = option.value;
+            node.textContent = option.label;
+            generatorModelInput.appendChild(node);
+          });
+          const hasCurrent = options.some(function (item) {
+            return item.value === currentValue;
+          });
+          generatorModelInput.value = hasCurrent ? currentValue : options[0].value;
+        }
+
         function applyDefaults(defaults) {
           if (!defaults || defaultsLoaded) return;
+          if (generatorProviderInput && defaults.generator_provider) {
+            generatorProviderInput.value = defaults.generator_provider;
+          }
+          syncGeneratorModelOptions(generatorProviderInput?.value || "deepseek", defaults.generator_model);
           if (generatorModelInput && defaults.generator_model) generatorModelInput.value = defaults.generator_model;
           if (judgeModelInput && defaults.judge_model) judgeModelInput.value = defaults.judge_model;
           if (temperatureInput && typeof defaults.temperature === "number") {
@@ -821,8 +890,14 @@
         }
 
         if (temperatureInput) temperatureInput.addEventListener("input", updateTemperatureBadge);
+        if (generatorProviderInput) {
+          generatorProviderInput.addEventListener("change", function () {
+            syncGeneratorModelOptions(generatorProviderInput.value);
+          });
+        }
         if (saveDraftBtn) saveDraftBtn.addEventListener("click", saveDraft);
         if (startBtn) startBtn.addEventListener("click", startRun);
+        syncGeneratorModelOptions(generatorProviderInput?.value || "deepseek");
         updateTemperatureBadge();
         syncLinks(currentRunId);
         refreshInputsStatus();

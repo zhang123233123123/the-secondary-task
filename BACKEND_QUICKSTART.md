@@ -8,9 +8,16 @@ python3 -m pip install -r requirements.txt
 ## 2. 设置 API Key
 ```bash
 export DEEPSEEK_API_KEY="你的key"
+export OPENAI_API_KEY="你的key"   # llm3 使用 OpenAI/ChatGPT 时需要
+export GEMINI_API_KEY="你的key"   # llm3 使用 Gemini 时需要
 ```
 可在设置页检查当前服务进程是否读到了该环境变量：
 - `http://127.0.0.1:8000/frontend/settings-api.html`
+
+说明：
+- `llm3` 现支持 `deepseek`、`openai`、`gemini`
+- `llm4` 评审模型固定建议为 `deepseek`
+- `llm2`（prepare 阶段）仍按当前配置使用 DeepSeek
 
 ## 3. 离线准备（LLM1/LLM2 生成候选）
 ```bash
@@ -57,6 +64,35 @@ python3 control_agent.py --config config.yaml --dry_run
 ## 6. 全量运行
 ```bash
 python3 control_agent.py run --config config.yaml
+```
+
+切换 `llm3` 示例：
+```yaml
+llm3:
+  provider: openai
+  model: gpt-4.1-mini
+  api_key_env: OPENAI_API_KEY
+  base_url: https://api.openai.com/v1
+
+llm4:
+  provider: deepseek
+  model: deepseek-chat
+  api_key_env: DEEPSEEK_API_KEY
+  base_url: https://api.deepseek.com/v1
+```
+
+```yaml
+llm3:
+  provider: gemini
+  model: gemini-2.0-flash
+  api_key_env: GEMINI_API_KEY
+  base_url: https://generativelanguage.googleapis.com/v1beta
+
+llm4:
+  provider: deepseek
+  model: deepseek-chat
+  api_key_env: DEEPSEEK_API_KEY
+  base_url: https://api.deepseek.com/v1
 ```
 
 ## 6.1 Kaggle: 开源 llm3 + DeepSeek llm4（评分）

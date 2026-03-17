@@ -28,23 +28,30 @@ def _extract_json_payload(text: str) -> Any:
     """Extract and parse JSON from LLM response with robust error handling."""
     cleaned = text.strip()
     original_text = cleaned  # Keep for debugging
-    
-    # Remove markdown code blocks if present
-    if cleaned.startswith("```"):
-        lines = cleaned.split("\n")
-        if lines[0].startswith("```"):
-            lines = lines[1:]  # Remove first ```json or ```
-        if lines and lines[-1].strip() == "```":
-            lines = lines[:-1]  # Remove closing ```
-        cleaned = "\n".join(lines).strip()
-    
-    # Remove single-line comments (// ...)
-    cleaned = re.sub(r'//.*?$', '', cleaned, flags=re.MULTILINE)
-    
-    # Remove multi-line comments (/* ... */)
-    cleaned = re.sub(r'/\*.*?\*/', '', cleaned, flags=re.DOTALL)
-    
-    # Try direct parsing first
+
+    def _strip_wrappers(value: str) -> str:
+        candidate = value
+        if candidate.startswith("```"):
+            lines = candidate.split("\n")
+            if lines[0].startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].strip() == "```":
+                lines = lines[:-1]
+            candidate = "\n".join(lines).strip()
+        return candidate
+
+    # Try direct parsing first before any comment stripping, so valid JSON strings
+    # containing // or /* */ are not corrupted.
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        cleaned = _strip_wrappers(cleaned)
+        try:
+            return json.loads(cleaned)
+        except json.JSONDecodeError:
+            cleaned = re.sub(r'//.*?$', '', cleaned, flags=re.MULTILINE)
+            cleaned = re.sub(r'/\*.*?\*/', '', cleaned, flags=re.DOTALL)
+
     try:
         return json.loads(cleaned)
     except json.JSONDecodeError as exc:
@@ -359,6 +366,7 @@ def prepare_inputs(
         prompts_payload = json.loads(prompts_path.read_text(encoding="utf-8"))
         # Reuse human-authored prompts, but keep strict structure validation.
         prompts_payload = _normalize_llm1_payload(prompts_payload)
+        load_prompts(prompts_path)
         llm1_model = None
     else:
         llm1_client = OpenAICompatibleChatClient(config.llm1)

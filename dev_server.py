@@ -23,7 +23,7 @@ from backend.frozen_registry import (
 )
 from backend.prepare_orchestrator import prepare_inputs
 from backend.runs_index import build_runs_index, write_runs_index
-from backend.runtime_config import load_config
+from backend.runtime_config import PROVIDER_DEFAULTS, load_config
 
 
 class DevRequestHandler(SimpleHTTPRequestHandler):
@@ -31,7 +31,12 @@ class DevRequestHandler(SimpleHTTPRequestHandler):
     prepare_jobs: dict[str, dict] = {}
     last_prepare_task_id: str | None = None
     jobs_lock = threading.Lock()
-    deepseek_key_name = "DEEPSEEK_API_KEY"
+    supported_provider_keys = {
+        "deepseek": "DEEPSEEK_API_KEY",
+        "openai": "OPENAI_API_KEY",
+        "gemini": "GEMINI_API_KEY",
+    }
+    supported_api_keys = ("DEEPSEEK_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY")
 
     @staticmethod
     def _resolve_repo_path(root: Path, raw_path: str) -> Path:
@@ -79,10 +84,22 @@ class DevRequestHandler(SimpleHTTPRequestHandler):
             merged["max_turns"] = max(1, int(overrides["max_turns"]))
         if "temperature" in overrides:
             llm3["temperature"] = float(overrides["temperature"])
+        if "generator_provider" in overrides and overrides["generator_provider"]:
+            provider = str(overrides["generator_provider"]).strip().lower()
+            if provider not in {"deepseek", "openai", "gemini"}:
+                raise ValueError(f"Unsupported generator_provider: {provider}")
+            llm3["provider"] = provider
+            provider_defaults = PROVIDER_DEFAULTS.get(provider, {})
+            if provider_defaults:
+                llm3["api_key_env"] = provider_defaults.get("api_key_env", llm3.get("api_key_env"))
+                llm3["base_url"] = provider_defaults.get("base_url", llm3.get("base_url"))
         if "generator_model" in overrides and overrides["generator_model"]:
             llm3["model"] = str(overrides["generator_model"])
         if "judge_model" in overrides and overrides["judge_model"]:
             llm4["model"] = str(overrides["judge_model"])
+        llm4["provider"] = "deepseek"
+        llm4["api_key_env"] = PROVIDER_DEFAULTS["deepseek"]["api_key_env"]
+        llm4["base_url"] = PROVIDER_DEFAULTS["deepseek"]["base_url"]
         if "resume_strategy" in overrides:
             strategy = str(overrides["resume_strategy"])
             if strategy in {"reconstruct", "skip"}:
@@ -135,12 +152,21 @@ class DevRequestHandler(SimpleHTTPRequestHandler):
         return secret[:4] + "*" * (len(secret) - 8) + secret[-4:]
 
     @classmethod
-    def _settings_payload(cls) -> dict:
-        process_value = os.environ.get(cls.deepseek_key_name)
+    def _api_key_status_for_env_key(cls, env_key: str) -> dict:
+        process_value = os.environ.get(env_key)
         return {
+            "env_key": env_key,
             "configured": bool(process_value),
             "masked_key": cls._mask_secret(process_value),
             "source": "process_env" if process_value else None,
+        }
+
+    @classmethod
+    def _settings_payload(cls) -> dict:
+        keys = [cls._api_key_status_for_env_key(env_key) for env_key in cls.supported_api_keys]
+        return {
+            "configured": any(item["configured"] for item in keys),
+            "keys": keys,
         }
 
     @staticmethod
@@ -178,9 +204,13 @@ class DevRequestHandler(SimpleHTTPRequestHandler):
         for role in roles:
             role_config = config_payload.get(role, {})
             if isinstance(role_config, dict):
-                required.add(str(role_config.get("api_key_env", cls.deepseek_key_name)))
-            else:
-                required.add(cls.deepseek_key_name)
+                provider = str(role_config.get("provider", "deepseek")).strip().lower()
+                if provider == "transformers":
+                    continue
+                defaults = PROVIDER_DEFAULTS.get(provider, PROVIDER_DEFAULTS["deepseek"])
+                required.add(str(role_config.get("api_key_env", defaults["api_key_env"])))
+            elif role == "llm4":
+                required.add(PROVIDER_DEFAULTS["deepseek"]["api_key_env"])
         missing: list[str] = []
         for key in sorted(required):
             if not key:
@@ -638,7 +668,9 @@ class DevRequestHandler(SimpleHTTPRequestHandler):
                     "path_errors": path_errors,
                     "defaults": {
                         "generator_model": str(llm3.get("model", "deepseek-chat")),
+                        "generator_provider": str(llm3.get("provider", "deepseek")),
                         "judge_model": str(llm4.get("model", "deepseek-chat")),
+                        "judge_provider": "deepseek",
                         "temperature": float(llm3.get("temperature", 0.7)),
                         "max_turns": int(raw_config.get("max_turns", 10)),
                         "resume_strategy": str(raw_config.get("resume_strategy", "reconstruct")),
@@ -701,35 +733,42 @@ class DevRequestHandler(SimpleHTTPRequestHandler):
                 self._json_response(HTTPStatus.BAD_REQUEST, {"error": "invalid json"})
                 return
             clear = bool(payload.get("clear", False))
+            env_key = str(payload.get("env_key", PROVIDER_DEFAULTS["deepseek"]["api_key_env"])).strip()
+            if env_key not in self.supported_api_keys:
+                self._json_response(
+                    HTTPStatus.BAD_REQUEST,
+                    {"error": f"unsupported env_key: {env_key}"},
+                )
+                return
             if clear:
-                os.environ.pop(self.deepseek_key_name, None)
+                os.environ.pop(env_key, None)
                 self._json_response(
                     HTTPStatus.OK,
                     {
                         "ok": True,
                         "message": "API key cleared from current dev_server process.",
-                        "required_env_key": self.deepseek_key_name,
+                        "required_env_key": env_key,
                         **self._settings_payload(),
                     },
                 )
                 return
-            key_value = payload.get("deepseek_api_key")
+            key_value = payload.get("api_key")
             if not isinstance(key_value, str) or not key_value.strip():
                 self._json_response(
                     HTTPStatus.BAD_REQUEST,
                     {
-                        "error": "deepseek_api_key must be a non-empty string",
-                        "required_env_key": self.deepseek_key_name,
+                        "error": "api_key must be a non-empty string",
+                        "required_env_key": env_key,
                     },
                 )
                 return
-            os.environ[self.deepseek_key_name] = key_value.strip()
+            os.environ[env_key] = key_value.strip()
             self._json_response(
                 HTTPStatus.OK,
                 {
                     "ok": True,
                     "message": "API key updated in current dev_server process.",
-                    "required_env_key": self.deepseek_key_name,
+                    "required_env_key": env_key,
                     **self._settings_payload(),
                 },
             )

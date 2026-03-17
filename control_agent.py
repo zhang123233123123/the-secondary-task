@@ -40,8 +40,12 @@ def _build_parser() -> argparse.ArgumentParser:
     prepare_parser = subparsers.add_parser("prepare", help="Generate offline dialogue candidates")
     prepare_parser.add_argument("--config", required=True, help="Path to config.yaml")
     prepare_parser.add_argument("--target_version", help="Optional fixed prepare version id")
-    prepare_parser.add_argument("--skip_llm1", action="store_true", default=True,
-                                help="Skip LLM1 prompt generation and use existing prompts (default: True)")
+    prepare_parser.add_argument(
+        "--skip_llm1",
+        action="store_true",
+        default=False,
+        help="Skip LLM1 prompt generation and use existing prompts",
+    )
 
     approve_prompts = subparsers.add_parser(
         "approve-prompts",

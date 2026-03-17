@@ -7,6 +7,34 @@ from typing import Any
 import yaml
 
 
+PROVIDER_DEFAULTS: dict[str, dict[str, str]] = {
+    "deepseek": {
+        "api_key_env": "DEEPSEEK_API_KEY",
+        "base_url": "https://api.deepseek.com/v1",
+    },
+    "openai": {
+        "api_key_env": "OPENAI_API_KEY",
+        "base_url": "https://api.openai.com/v1",
+    },
+    "openai_compatible": {
+        "api_key_env": "OPENAI_API_KEY",
+        "base_url": "https://api.openai.com/v1",
+    },
+    "openai-compatible": {
+        "api_key_env": "OPENAI_API_KEY",
+        "base_url": "https://api.openai.com/v1",
+    },
+    "gemini": {
+        "api_key_env": "GEMINI_API_KEY",
+        "base_url": "https://generativelanguage.googleapis.com/v1beta",
+    },
+    "transformers": {
+        "api_key_env": "UNUSED",
+        "base_url": "",
+    },
+}
+
+
 @dataclass
 class LLMConfig:
     provider: str
@@ -51,11 +79,13 @@ class RuntimeConfig:
 
 
 def _load_llm_config(raw: dict[str, Any], default_model: str) -> LLMConfig:
+    provider = str(raw.get("provider", "deepseek")).strip().lower()
+    defaults = PROVIDER_DEFAULTS.get(provider, PROVIDER_DEFAULTS["deepseek"])
     return LLMConfig(
-        provider=str(raw.get("provider", "deepseek")),
+        provider=provider,
         model=str(raw.get("model", default_model)),
-        api_key_env=str(raw.get("api_key_env", "DEEPSEEK_API_KEY")),
-        base_url=str(raw.get("base_url", "https://api.deepseek.com/v1")),
+        api_key_env=str(raw.get("api_key_env", defaults["api_key_env"])),
+        base_url=str(raw.get("base_url", defaults["base_url"])),
         temperature=float(raw.get("temperature", 0.7)),
         top_p=float(raw.get("top_p", 1.0)),
         seed=raw.get("seed"),

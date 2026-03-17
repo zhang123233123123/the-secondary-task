@@ -4,8 +4,10 @@ import random
 
 from pathlib import Path
 
+import pytest
+
 from backend.llm_clients import ChatResult
-from backend.prepare_orchestrator import prepare_inputs
+from backend.prepare_orchestrator import _extract_json_payload, prepare_inputs
 from backend.runtime_config import load_config
 
 
@@ -460,3 +462,62 @@ def test_prepare_inputs_continues_after_single_item_failure_until_target_count(t
     assert manifest["llm2_failed_attempts"] == 1
     assert manifest["llm2_generation_attempts"] == 3
     assert attempts["count"] == 3
+
+
+def test_extract_json_payload_keeps_comment_markers_inside_strings():
+    payload = '{"url":"https://example.com/a?x=1","code":"/* keep */ // keep"}'
+    parsed = _extract_json_payload(payload)
+    assert parsed["url"] == "https://example.com/a?x=1"
+    assert parsed["code"] == "/* keep */ // keep"
+
+
+def test_prepare_inputs_validates_reused_prompts_before_llm2_calls(tmp_path, monkeypatch):
+    prompts_path = tmp_path / "prompts_invalid.json"
+    prompts_path.write_text(
+        json.dumps(
+            {
+                "conditions": {
+                    "default": "d",
+                    "unhelpful": "",
+                    "cynical": "c",
+                    "distant": "x",
+                },
+                "judge_system": "judge",
+                "judge_rubric": "rubric",
+                "judge_schema": {"type": "object"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "frozen_index_path: frozen_inputs/index.json",
+                f"prompts_path: {prompts_path.name}",
+                "prepare_dialogue_count: 1",
+                "prepare_dialogue_turns: 2",
+                "llm2:",
+                "  provider: deepseek",
+                "  model: llm2-test",
+                "  api_key_env: TEST_KEY",
+                "  base_url: https://api.deepseek.com/v1",
+                "  temperature: 0.9",
+                "  top_p: 1.0",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    def fake_chat(self, messages, timeout_seconds):  # noqa: ANN001
+        raise AssertionError("llm2 should not be called when reused prompts are invalid")
+
+    monkeypatch.setattr("backend.llm_clients.OpenAICompatibleChatClient.chat", fake_chat)
+    config = load_config(config_path)
+    with pytest.raises(ValueError, match="conditions.unhelpful"):
+        prepare_inputs(
+            config=config,
+            config_path=str(config_path),
+            target_version="vprep_invalid_prompts",
+            skip_llm1=True,
+        )
