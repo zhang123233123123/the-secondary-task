@@ -1,0 +1,14 @@
+{
+  "total_success_rows": 10058,
+  "by_domain": {
+    "creative": 4473,
+    "finance": 2728,
+    "mental_health": 1600,
+    "medicine": 1257
+  },
+  "source_files": [
+    "/Users/zhanghongjian/Desktop/the-secondary-task/stress_test_100turn_deepseek/output_part1/results_run_20260320_165503_ad22cb.jsonl",
+    "/Users/zhanghongjian/Desktop/the-secondary-task/stress_test_100turn_deepseek/output_part2/results_run_20260320_165511_134018.jsonl",
+    "/Users/zhanghongjian/Desktop/the-secondary-task/stress_test_100turn_deepseek/output_part3/results_run_20260320_165527_555cc3.jsonl"
+  ]
+}

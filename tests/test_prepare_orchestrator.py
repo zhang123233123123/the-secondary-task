@@ -521,3 +521,110 @@ def test_prepare_inputs_validates_reused_prompts_before_llm2_calls(tmp_path, mon
             target_version="vprep_invalid_prompts",
             skip_llm1=True,
         )
+
+
+def test_prepare_inputs_generates_long_dialogue_in_chunks(tmp_path, monkeypatch):
+    prompts_path = tmp_path / "prompts_ready.json"
+    prompts_path.write_text(
+        json.dumps(
+            {
+                "conditions": {
+                    "default": "d",
+                    "unhelpful": "e",
+                    "cynical": "c",
+                    "distant": "x",
+                },
+                "judge_system": "judge",
+                "judge_rubric": "rubric",
+                "judge_schema": {"type": "object"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "frozen_index_path: frozen_inputs/index.json",
+                f"prompts_path: {prompts_path.name}",
+                "prepare_dialogue_count: 1",
+                "prepare_dialogue_min_turns: 45",
+                "prepare_dialogue_turns: 45",
+                "prepare_chunk_turns: 20",
+                "prepare_chunk_context_turns: 3",
+                "llm2:",
+                "  provider: deepseek",
+                "  model: llm2-test",
+                "  api_key_env: TEST_KEY",
+                "  base_url: https://api.deepseek.com/v1",
+                "  temperature: 0.9",
+                "  top_p: 1.0",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    chunk_ranges: list[tuple[int, int]] = []
+    saw_plan = {"value": False}
+
+    def fake_chat(self, messages, timeout_seconds):  # noqa: ANN001
+        del timeout_seconds, self
+        user_prompt = next(str(msg.get("content", "")) for msg in messages if msg.get("role") == "user")
+        if "Create a continuity plan" in user_prompt:
+            saw_plan["value"] = True
+            return ChatResult(
+                text=json.dumps(
+                    {
+                        "premise": "A realistic finance planning conversation.",
+                        "speaker_profile": "A user trying to stabilize cash flow.",
+                        "continuity_rules": ["Keep the same income facts.", "Stay on the same 12-month timeline."],
+                        "stages": [
+                            {"name": "setup", "turn_start": 1, "turn_end": 20, "goal": "Establish baseline facts."},
+                            {"name": "development", "turn_start": 21, "turn_end": 40, "goal": "Refine trade-offs."},
+                            {"name": "final", "turn_start": 41, "turn_end": 45, "goal": "Wrap up with a concrete plan."},
+                        ],
+                    }
+                ),
+                latency_ms=11,
+                raw={},
+            )
+
+        match = re.search(r"generate turns (\\d+) through (\\d+) only", user_prompt)
+        if not match:
+            raise AssertionError(f"unexpected llm2 prompt: {user_prompt[:120]}")
+        start = int(match.group(1))
+        end = int(match.group(2))
+        chunk_ranges.append((start, end))
+        return ChatResult(
+            text=json.dumps(
+                {
+                    "turns": [
+                        {"role": "user", "text": f"turn_{turn_index}"}
+                        for turn_index in range(start, end + 1)
+                    ]
+                }
+            ),
+            latency_ms=7,
+            raw={},
+        )
+
+    monkeypatch.setattr("backend.llm_clients.OpenAICompatibleChatClient.chat", fake_chat)
+    config = load_config(config_path)
+    manifest = prepare_inputs(
+        config=config,
+        config_path=str(config_path),
+        target_version="vprep_chunked",
+        skip_llm1=True,
+    )
+
+    assert saw_plan["value"] is True
+    assert chunk_ranges == [(1, 20), (21, 40), (41, 45)]
+    assert manifest["llm2_request_count"] == 1
+    assert manifest["llm2_latency_ms"] == 32
+    assert manifest["prepare_chunk_turns"] == 20
+    dialogues_path = Path(manifest["dialogues_candidate"])
+    items = [json.loads(line) for line in dialogues_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    assert len(items) == 1
+    assert len(items[0]["turns"]) == 45
+    assert items[0]["turns"][0]["text"] == "turn_1"
+    assert items[0]["turns"][-1]["text"] == "turn_45"

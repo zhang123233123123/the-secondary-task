@@ -72,6 +72,8 @@ class RuntimeConfig:
     prepare_dialogue_min_turns: int
     prepare_dialogue_turns: int
     prepare_domain_distribution: dict[str, float]
+    prepare_chunk_turns: int
+    prepare_chunk_context_turns: int
     llm1: LLMConfig | None
     llm2: LLMConfig
     llm3: LLMConfig
@@ -132,6 +134,8 @@ def load_config(path: str | Path) -> RuntimeConfig:
         prepare_dialogue_min_turns=int(raw.get("prepare_dialogue_min_turns", 1)),
         prepare_dialogue_turns=int(raw.get("prepare_dialogue_turns", 6)),
         prepare_domain_distribution=normalized_distribution,
+        prepare_chunk_turns=int(raw.get("prepare_chunk_turns", 20)),
+        prepare_chunk_context_turns=int(raw.get("prepare_chunk_context_turns", 8)),
         llm1=_load_llm_config(raw["llm1"], default_model="deepseek-chat") if "llm1" in raw else None,
         llm2=_load_llm_config(raw.get("llm2", {}), default_model="deepseek-chat"),
         llm3=_load_llm_config(raw.get("llm3", {}), default_model="deepseek-chat"),

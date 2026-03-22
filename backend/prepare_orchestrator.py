@@ -170,6 +170,87 @@ def _llm2_single_dialogue_messages(
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 
 
+def _llm2_dialogue_plan_messages(
+    *,
+    dialogue_index: int,
+    dialogue_count: int,
+    domain: str,
+    target_turns: int,
+    chunk_turns: int,
+) -> list[dict[str, str]]:
+    system = (
+        "You are LLM2 Dialogue Planner. You MUST return ONLY valid JSON. "
+        "No markdown code blocks, no comments, no trailing commas, no explanations."
+    )
+    user = (
+        f"Create a continuity plan for exactly one {domain} dialogue with {target_turns} user turns.\n\n"
+        "Return exactly this JSON object structure:\n"
+        "{\n"
+        '  "premise": "one-sentence scenario",\n'
+        '  "speaker_profile": "who the user is and why they are asking",\n'
+        '  "continuity_rules": ["stable fact 1", "stable fact 2"],\n'
+        '  "stages": [\n'
+        '    {"name": "setup", "turn_start": 1, "turn_end": 20, "goal": "what happens in this phase"},\n'
+        '    {"name": "development", "turn_start": 21, "turn_end": 40, "goal": "what happens in this phase"}\n'
+        "  ]\n"
+        "}\n\n"
+        "CRITICAL RULES:\n"
+        f"1. stages MUST fully cover turns 1 through {target_turns}\n"
+        f"2. Each stage should span about {chunk_turns} turns, except the last chunk if needed\n"
+        "3. continuity_rules must contain stable facts that should not change later\n"
+        "4. premise and speaker_profile must be specific, realistic, and domain-appropriate\n"
+        "5. Output ONLY the JSON object\n"
+        f"Context: This is dialogue {dialogue_index}/{dialogue_count}"
+    )
+    return [{"role": "system", "content": system}, {"role": "user", "content": user}]
+
+
+def _llm2_dialogue_chunk_messages(
+    *,
+    dialogue_index: int,
+    dialogue_count: int,
+    domain: str,
+    target_turns: int,
+    chunk_start: int,
+    chunk_end: int,
+    plan: dict[str, Any],
+    previous_turns: list[dict[str, str]],
+) -> list[dict[str, str]]:
+    expected_count = chunk_end - chunk_start + 1
+    prior_context = previous_turns[-8:] if previous_turns else []
+    plan_json = json.dumps(plan, ensure_ascii=False, indent=2)
+    prior_json = json.dumps(prior_context, ensure_ascii=False, indent=2)
+    system = (
+        "You are LLM2 Dialogue Generator. You continue one existing user-only conversation. "
+        "You MUST return ONLY valid JSON. No markdown code blocks, no comments, no trailing commas, no explanations."
+    )
+    user = (
+        f"Continue dialogue {dialogue_index}/{dialogue_count} in the '{domain}' domain.\n"
+        f"The full dialogue will have exactly {target_turns} user turns.\n"
+        f"You must now generate turns {chunk_start} through {chunk_end} only.\n\n"
+        "Dialogue plan:\n"
+        f"{plan_json}\n\n"
+        "Most recent prior turns (may be empty for the first chunk):\n"
+        f"{prior_json}\n\n"
+        "Return exactly this JSON object structure:\n"
+        "{\n"
+        '  "turns": [\n'
+        '    {"role": "user", "text": "next user message"},\n'
+        '    {"role": "user", "text": "following user message"}\n'
+        "  ]\n"
+        "}\n\n"
+        "CRITICAL RULES:\n"
+        f"1. turns MUST contain EXACTLY {expected_count} items\n"
+        "2. Each item must be {\"role\": \"user\", \"text\": \"non-empty string\"}\n"
+        "3. Continue the SAME speaker, scenario, facts, timeline, and goals from the plan\n"
+        "4. Do not restart the conversation, repeat the opening, or summarize the plan back to the assistant\n"
+        "5. Make the turns feel sequential: react to recent progress, questions, constraints, and decisions\n"
+        "6. Avoid filler, numbering, stage directions, and obvious repetition\n"
+        "7. Output ONLY the JSON object\n"
+    )
+    return [{"role": "system", "content": system}, {"role": "user", "content": user}]
+
+
 def _build_turn_plan(
     dialogue_count: int,
     min_turns: int,
@@ -288,6 +369,265 @@ def _normalize_llm2_single_dialogue_payload(raw: Any) -> dict[str, Any]:
             raise ValueError("LLM2 single-dialogue payload item must be an object")
         return item
     raise ValueError("LLM2 single-dialogue payload must be JSON object or single-item array")
+
+
+def _normalize_llm2_dialogue_plan_payload(raw: Any, *, target_turns: int) -> dict[str, Any]:
+    if not isinstance(raw, dict):
+        raise ValueError("LLM2 dialogue plan payload must be a JSON object")
+    premise = str(raw.get("premise", "")).strip()
+    speaker_profile = str(raw.get("speaker_profile", "")).strip()
+    continuity_rules_raw = raw.get("continuity_rules")
+    stages_raw = raw.get("stages")
+    if not premise:
+        raise ValueError("LLM2 dialogue plan missing non-empty premise")
+    if not speaker_profile:
+        raise ValueError("LLM2 dialogue plan missing non-empty speaker_profile")
+    if not isinstance(continuity_rules_raw, list) or not continuity_rules_raw:
+        raise ValueError("LLM2 dialogue plan continuity_rules must be a non-empty array")
+    continuity_rules = [str(item).strip() for item in continuity_rules_raw if str(item).strip()]
+    if not continuity_rules:
+        raise ValueError("LLM2 dialogue plan continuity_rules must contain non-empty strings")
+    if not isinstance(stages_raw, list) or not stages_raw:
+        raise ValueError("LLM2 dialogue plan stages must be a non-empty array")
+
+    stages: list[dict[str, Any]] = []
+    expected_start = 1
+    for idx, stage in enumerate(stages_raw, start=1):
+        if not isinstance(stage, dict):
+            raise ValueError(f"LLM2 dialogue plan stage #{idx} must be an object")
+        name = str(stage.get("name", "")).strip() or f"stage_{idx}"
+        goal = str(stage.get("goal", "")).strip()
+        turn_start = int(stage.get("turn_start", 0))
+        turn_end = int(stage.get("turn_end", 0))
+        if not goal:
+            raise ValueError(f"LLM2 dialogue plan stage '{name}' missing goal")
+        if turn_start != expected_start:
+            raise ValueError(
+                f"LLM2 dialogue plan stage '{name}' must start at turn {expected_start}, got {turn_start}"
+            )
+        if turn_end < turn_start:
+            raise ValueError(
+                f"LLM2 dialogue plan stage '{name}' has invalid range {turn_start}-{turn_end}"
+            )
+        stages.append(
+            {
+                "name": name,
+                "turn_start": turn_start,
+                "turn_end": turn_end,
+                "goal": goal,
+            }
+        )
+        expected_start = turn_end + 1
+
+    if stages[-1]["turn_end"] != target_turns:
+        raise ValueError(
+            f"LLM2 dialogue plan must end at turn {target_turns}, got {stages[-1]['turn_end']}"
+        )
+
+    return {
+        "premise": premise,
+        "speaker_profile": speaker_profile,
+        "continuity_rules": continuity_rules,
+        "stages": stages,
+    }
+
+
+def _normalize_llm2_chunk_payload(raw: Any, *, expected_count: int) -> list[dict[str, str]]:
+    if not isinstance(raw, dict):
+        raise ValueError("LLM2 chunk payload must be a JSON object")
+    turns = raw.get("turns")
+    if not isinstance(turns, list):
+        raise ValueError("LLM2 chunk payload turns must be an array")
+    if len(turns) != expected_count:
+        raise ValueError(
+            f"LLM2 chunk payload turns count mismatch: expected={expected_count}, actual={len(turns)}"
+        )
+    normalized: list[dict[str, str]] = []
+    for idx, turn in enumerate(turns, start=1):
+        if not isinstance(turn, dict):
+            raise ValueError(f"LLM2 chunk payload turn #{idx} must be an object")
+        role = turn.get("role")
+        text = str(turn.get("text", "")).strip()
+        if role != "user":
+            raise ValueError(f"LLM2 chunk payload turn #{idx} role must be 'user'")
+        if not text:
+            raise ValueError(f"LLM2 chunk payload turn #{idx} text must be non-empty")
+        normalized.append({"role": "user", "text": text})
+    return normalized
+
+
+def _llm2_generate_dialogue_plan_with_retry(
+    *,
+    llm2_client: OpenAICompatibleChatClient,
+    config: RuntimeConfig,
+    dialogue_index: int,
+    dialogue_count: int,
+    domain: str,
+    target_turns: int,
+    chunk_turns: int,
+    backoff_seconds: float = 0.5,
+) -> tuple[dict[str, Any], int]:
+    attempts = max(1, int(config.retries) + 1)
+    last_error: Exception | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            result = llm2_client.chat(
+                _llm2_dialogue_plan_messages(
+                    dialogue_index=dialogue_index,
+                    dialogue_count=dialogue_count,
+                    domain=domain,
+                    target_turns=target_turns,
+                    chunk_turns=chunk_turns,
+                ),
+                config.timeout_seconds,
+            )
+            plan = _normalize_llm2_dialogue_plan_payload(
+                _extract_json_payload(result.text),
+                target_turns=target_turns,
+            )
+            return plan, result.latency_ms
+        except Exception as exc:  # noqa: BLE001
+            last_error = exc
+            if attempt < attempts:
+                time.sleep(backoff_seconds * (2 ** (attempt - 1)))
+                continue
+    if last_error is None:
+        raise RuntimeError("Unexpected retry state")
+    raise ValueError(
+        f"LLM2 plan generation failed after {attempts} attempts for dialogue {dialogue_index}/{dialogue_count} "
+        f"(domain={domain}, turns={target_turns}): {type(last_error).__name__}: {str(last_error)[:200]}"
+    ) from last_error
+
+
+def _llm2_generate_dialogue_chunk_with_retry(
+    *,
+    llm2_client: OpenAICompatibleChatClient,
+    config: RuntimeConfig,
+    dialogue_index: int,
+    dialogue_count: int,
+    domain: str,
+    target_turns: int,
+    chunk_start: int,
+    chunk_end: int,
+    plan: dict[str, Any],
+    previous_turns: list[dict[str, str]],
+    backoff_seconds: float = 0.5,
+) -> tuple[list[dict[str, str]], int]:
+    attempts = max(1, int(config.retries) + 1)
+    last_error: Exception | None = None
+    expected_count = chunk_end - chunk_start + 1
+    for attempt in range(1, attempts + 1):
+        try:
+            result = llm2_client.chat(
+                _llm2_dialogue_chunk_messages(
+                    dialogue_index=dialogue_index,
+                    dialogue_count=dialogue_count,
+                    domain=domain,
+                    target_turns=target_turns,
+                    chunk_start=chunk_start,
+                    chunk_end=chunk_end,
+                    plan=plan,
+                    previous_turns=previous_turns,
+                ),
+                config.timeout_seconds,
+            )
+            turns = _normalize_llm2_chunk_payload(
+                _extract_json_payload(result.text),
+                expected_count=expected_count,
+            )
+            return turns, result.latency_ms
+        except Exception as exc:  # noqa: BLE001
+            last_error = exc
+            if attempt < attempts:
+                time.sleep(backoff_seconds * (2 ** (attempt - 1)))
+                continue
+    if last_error is None:
+        raise RuntimeError("Unexpected retry state")
+    raise ValueError(
+        f"LLM2 chunk generation failed after {attempts} attempts for dialogue {dialogue_index}/{dialogue_count} "
+        f"(domain={domain}, turns={chunk_start}-{chunk_end}): {type(last_error).__name__}: {str(last_error)[:200]}"
+    ) from last_error
+
+
+def _llm2_generate_dialogue_in_chunks(
+    *,
+    llm2_client: OpenAICompatibleChatClient,
+    config: RuntimeConfig,
+    dialogue_index: int,
+    dialogue_count: int,
+    domain: str,
+    target_turns: int,
+) -> tuple[dict[str, Any], int]:
+    chunk_turns = max(1, int(config.prepare_chunk_turns))
+    total_latency_ms = 0
+    plan, plan_latency_ms = _llm2_generate_dialogue_plan_with_retry(
+        llm2_client=llm2_client,
+        config=config,
+        dialogue_index=dialogue_index,
+        dialogue_count=dialogue_count,
+        domain=domain,
+        target_turns=target_turns,
+        chunk_turns=chunk_turns,
+    )
+    total_latency_ms += plan_latency_ms
+
+    assembled_turns: list[dict[str, str]] = []
+    for chunk_start in range(1, target_turns + 1, chunk_turns):
+        chunk_end = min(target_turns, chunk_start + chunk_turns - 1)
+        context_turns = max(0, int(config.prepare_chunk_context_turns))
+        previous_turns = (
+            assembled_turns[-context_turns:] if context_turns > 0 else []
+        )
+        chunk_turns_payload, chunk_latency_ms = _llm2_generate_dialogue_chunk_with_retry(
+            llm2_client=llm2_client,
+            config=config,
+            dialogue_index=dialogue_index,
+            dialogue_count=dialogue_count,
+            domain=domain,
+            target_turns=target_turns,
+            chunk_start=chunk_start,
+            chunk_end=chunk_end,
+            plan=plan,
+            previous_turns=previous_turns,
+        )
+        total_latency_ms += chunk_latency_ms
+        assembled_turns.extend(chunk_turns_payload)
+
+    dialogue_item = {
+        "dialogue_id": f"dlg_{dialogue_index:05d}",
+        "domain": domain,
+        "turns": assembled_turns,
+    }
+    return dialogue_item, total_latency_ms
+
+
+def _llm2_generate_dialogue(
+    *,
+    llm2_client: OpenAICompatibleChatClient,
+    config: RuntimeConfig,
+    dialogue_index: int,
+    dialogue_count: int,
+    domain: str,
+    target_turns: int,
+) -> tuple[dict[str, Any], int]:
+    chunk_turns = max(1, int(config.prepare_chunk_turns))
+    if target_turns > chunk_turns:
+        return _llm2_generate_dialogue_in_chunks(
+            llm2_client=llm2_client,
+            config=config,
+            dialogue_index=dialogue_index,
+            dialogue_count=dialogue_count,
+            domain=domain,
+            target_turns=target_turns,
+        )
+    return _llm2_single_dialogue_with_retry(
+        llm2_client=llm2_client,
+        config=config,
+        dialogue_index=dialogue_index,
+        dialogue_count=dialogue_count,
+        domain=domain,
+        target_turns=target_turns,
+    )
 
 
 def _llm2_single_dialogue_with_retry(
@@ -433,7 +773,7 @@ def prepare_inputs(
             domain = domain_plan[dialogue_index - 1]
             target_turns = turn_plan[dialogue_index - 1]
             try:
-                dialogue_item, latency_ms = _llm2_single_dialogue_with_retry(
+                dialogue_item, latency_ms = _llm2_generate_dialogue(
                     llm2_client=llm2_client,
                     config=config,
                     dialogue_index=dialogue_index,
@@ -509,6 +849,8 @@ def prepare_inputs(
         "prepare_dialogue_turns_min": config.prepare_dialogue_min_turns,
         "prepare_dialogue_turns_max": config.prepare_dialogue_turns,
         "prepare_dialogue_turns_mode": "random_min_to_max",
+        "prepare_chunk_turns": config.prepare_chunk_turns,
+        "prepare_chunk_context_turns": config.prepare_chunk_context_turns,
         "skip_llm1": skip_llm1,
         "generation_error": str(generation_error) if generation_error else None,
     }

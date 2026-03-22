@@ -1,0 +1,62 @@
+{
+  "run_id": "run_20260320_165527_555cc3",
+  "expected_rows": 6800,
+  "actual_rows": 6800,
+  "new_rows_written": 3976,
+  "flush_policy_requested": "per_turn",
+  "flush_policy_effective": "per_turn",
+  "error_rows": 0,
+  "error_rate": 0.0,
+  "generate_errors": 0,
+  "judge_errors": 0,
+  "judge_parse_errors": 0,
+  "new_generate_errors": 0,
+  "new_judge_errors": 0,
+  "new_judge_parse_errors": 0,
+  "truncated_count": 0,
+  "refusal_count": 0,
+  "refusal_rate": 0.0,
+  "prompts_version": "persona_20260311_newprompts",
+  "dialogues_version": null,
+  "prompts_source": "frozen",
+  "dialogues_source": "manual",
+  "approval_enforced": false,
+  "frozen_index_path": "/Users/zhanghongjian/Desktop/the-secondary-task/frozen_inputs/index.json",
+  "dry_run": false,
+  "validation_log_file": null,
+  "aborted": false,
+  "abort_reason": null,
+  "anthro_item_means_by_condition": {
+    "default": {
+      "anthro_q1": 4.052352941176471,
+      "anthro_q2": 4.0188235294117645,
+      "anthro_q3": 3.9511764705882353,
+      "anthro_q4": 3.334705882352941,
+      "anthro_q5": 3.8058823529411763
+    },
+    "unhelpful": {
+      "anthro_q1": 3.6805882352941177,
+      "anthro_q2": 3.6205882352941177,
+      "anthro_q3": 3.545294117647059,
+      "anthro_q4": 2.7676470588235293,
+      "anthro_q5": 3.4305882352941177
+    },
+    "cynical": {
+      "anthro_q1": 4.020588235294118,
+      "anthro_q2": 4.009411764705883,
+      "anthro_q3": 3.9558823529411766,
+      "anthro_q4": 3.336470588235294,
+      "anthro_q5": 3.9194117647058824
+    },
+    "distant": {
+      "anthro_q1": 2.338235294117647,
+      "anthro_q2": 2.316470588235294,
+      "anthro_q3": 2.395294117647059,
+      "anthro_q4": 2.1017647058823528,
+      "anthro_q5": 2.296470588235294
+    }
+  },
+  "prompts_hash": "e7c0e5189c38620702472283b918cef77bec57353149ab3b4c5a25143b7a396c",
+  "config_hash": "cde857c9ed5f4f073a713af354bb64b15d2a6b1be31c8582b442800b08b58c0b",
+  "dialogues_hash": "1d58672b88eb0220a919c8fdb98a68bfaa5f0a14a5445d67ee49a87cc144a50b"
+}

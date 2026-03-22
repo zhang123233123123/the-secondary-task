@@ -1,0 +1,19 @@
+{
+  "latest_run_id": "run_20260320_165527_555cc3",
+  "runs": [
+    {
+      "run_id": "run_20260320_165527_555cc3",
+      "created_at_utc": "2026-03-22T05:23:16.613957+00:00",
+      "summary_file": "run_summary_run_20260320_165527_555cc3.json",
+      "results_file": "results_run_20260320_165527_555cc3.jsonl",
+      "results_exists": true
+    },
+    {
+      "run_id": "run_20260320_165527_555cc3.before_filter",
+      "created_at_utc": "2026-03-21T14:45:20.815061+00:00",
+      "summary_file": "run_summary_run_20260320_165527_555cc3.before_filter.json",
+      "results_file": "results_run_20260320_165527_555cc3.before_filter.jsonl",
+      "results_exists": true
+    }
+  ]
+}

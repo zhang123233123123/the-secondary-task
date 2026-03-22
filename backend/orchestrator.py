@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from tqdm import tqdm
+
 from .frozen_registry import find_approved_version_for_file
 from .input_loader import Dialogue, PromptsBundle, compute_sha256, load_dialogues, load_prompts
 from .llm_client_factory import build_chat_client
@@ -291,6 +293,19 @@ def run_experiment(
     llm4_client = build_chat_client(config.llm4)
     abort_reason: str | None = None
 
+    total_combos = len(dialogues) * len(CONDITIONS_ORDER)
+    total_turns = sum(
+        min(len(d.turns), config.max_turns) for d in dialogues
+    ) * len(CONDITIONS_ORDER)
+    already_done = resume_state.existing_rows
+    pbar = tqdm(
+        total=total_turns,
+        initial=already_done,
+        desc="turns",
+        unit="turn",
+        dynamic_ncols=True,
+    )
+
     try:
         for dialogue in dialogues:
             for condition in CONDITIONS_ORDER:
@@ -314,6 +329,8 @@ def run_experiment(
 
                 max_turns = min(len(dialogue.turns), config.max_turns)
                 stats.expected_rows += max_turns
+
+                pbar.set_postfix_str(f"{dialogue.dialogue_id}/{condition}")
 
                 for turn_index in range(1, max_turns + 1):
                     if turn_index in processed_turns:
@@ -461,6 +478,7 @@ def run_experiment(
                     }
                     writer.write(row)
                     stats.actual_rows += 1
+                    pbar.update(1)
 
                     if context_truncated:
                         stats.truncated_count += 1
@@ -480,6 +498,7 @@ def run_experiment(
         abort_reason = str(exc)
 
     finally:
+        pbar.close()
         writer.close()
 
     final_resume_state = load_resume_state(writer.results_path)

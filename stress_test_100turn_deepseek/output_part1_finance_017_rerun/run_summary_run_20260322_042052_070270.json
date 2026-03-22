@@ -1,0 +1,62 @@
+{
+  "run_id": "run_20260322_042052_070270",
+  "expected_rows": 400,
+  "actual_rows": 400,
+  "new_rows_written": 400,
+  "flush_policy_requested": "per_turn",
+  "flush_policy_effective": "per_turn",
+  "error_rows": 400,
+  "error_rate": 1.0,
+  "generate_errors": 400,
+  "judge_errors": 0,
+  "judge_parse_errors": 0,
+  "new_generate_errors": 400,
+  "new_judge_errors": 0,
+  "new_judge_parse_errors": 0,
+  "truncated_count": 0,
+  "refusal_count": 0,
+  "refusal_rate": 0.0,
+  "prompts_version": "persona_20260311_newprompts",
+  "dialogues_version": null,
+  "prompts_source": "frozen",
+  "dialogues_source": "manual",
+  "approval_enforced": false,
+  "frozen_index_path": "/Users/zhanghongjian/Desktop/the-secondary-task/frozen_inputs/index.json",
+  "dry_run": false,
+  "validation_log_file": null,
+  "aborted": false,
+  "abort_reason": null,
+  "anthro_item_means_by_condition": {
+    "default": {
+      "anthro_q1": null,
+      "anthro_q2": null,
+      "anthro_q3": null,
+      "anthro_q4": null,
+      "anthro_q5": null
+    },
+    "unhelpful": {
+      "anthro_q1": null,
+      "anthro_q2": null,
+      "anthro_q3": null,
+      "anthro_q4": null,
+      "anthro_q5": null
+    },
+    "cynical": {
+      "anthro_q1": null,
+      "anthro_q2": null,
+      "anthro_q3": null,
+      "anthro_q4": null,
+      "anthro_q5": null
+    },
+    "distant": {
+      "anthro_q1": null,
+      "anthro_q2": null,
+      "anthro_q3": null,
+      "anthro_q4": null,
+      "anthro_q5": null
+    }
+  },
+  "prompts_hash": "e7c0e5189c38620702472283b918cef77bec57353149ab3b4c5a25143b7a396c",
+  "config_hash": "6e394bf50addfdd1f7a401fafad8775a7b69f5c5c4b8d363e8121b3da78d211f",
+  "dialogues_hash": "41de91588405b9c72e22a7a172ae35842a9af251033b0285f14d58837a97feb9"
+}
