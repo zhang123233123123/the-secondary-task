@@ -1,0 +1,134 @@
+{
+  "source_results": "stress_test_200turn_deepseek/output_four_domains_natural/results_run_20260322_162403_a5925b.jsonl",
+  "output_dir": "stress_test_200turn_deepseek/output_analysis_20260323",
+  "total_rows": 1743,
+  "success_rows": 1540,
+  "error_rows": 203,
+  "dialogues_present": [
+    "creative_000_natural_200turn",
+    "finance_013_natural_200turn",
+    "mental_health_026_natural_200turn"
+  ],
+  "conditions_present": [
+    "cynical",
+    "default",
+    "distant",
+    "unhelpful"
+  ],
+  "success_rows_by_condition": {
+    "cynical": 400,
+    "default": 340,
+    "distant": 400,
+    "unhelpful": 400
+  },
+  "success_rows_by_domain": {
+    "creative": 726,
+    "finance": 671,
+    "mental_health": 143
+  },
+  "combo_status": [
+    {
+      "dialogue_id": "creative_000_natural_200turn",
+      "condition": "cynical",
+      "success": 200,
+      "errors": 0,
+      "max_success_turn": 200,
+      "first_error_turn": null,
+      "first_error_message": null
+    },
+    {
+      "dialogue_id": "creative_000_natural_200turn",
+      "condition": "default",
+      "success": 126,
+      "errors": 74,
+      "max_success_turn": 126,
+      "first_error_turn": 127,
+      "first_error_message": "HTTP 400: {\"error\":{\"message\":\"This model's maximum context length is 131072 tokens. However, you requested 131086 tokens (131086 in the messages, 0 in the completion). Please reduce the length of the messages or completion.\",\"type\":\"invalid_request_error\",\"param\":null,\"code\":\"invalid_request_error\"}}"
+    },
+    {
+      "dialogue_id": "creative_000_natural_200turn",
+      "condition": "distant",
+      "success": 200,
+      "errors": 0,
+      "max_success_turn": 200,
+      "first_error_turn": null,
+      "first_error_message": null
+    },
+    {
+      "dialogue_id": "creative_000_natural_200turn",
+      "condition": "unhelpful",
+      "success": 200,
+      "errors": 0,
+      "max_success_turn": 200,
+      "first_error_turn": null,
+      "first_error_message": null
+    },
+    {
+      "dialogue_id": "finance_013_natural_200turn",
+      "condition": "cynical",
+      "success": 200,
+      "errors": 0,
+      "max_success_turn": 200,
+      "first_error_turn": null,
+      "first_error_message": null
+    },
+    {
+      "dialogue_id": "finance_013_natural_200turn",
+      "condition": "default",
+      "success": 71,
+      "errors": 129,
+      "max_success_turn": 71,
+      "first_error_turn": 72,
+      "first_error_message": "HTTP 400: {\"error\":{\"message\":\"This model's maximum context length is 131072 tokens. However, you requested 131089 tokens (131089 in the messages, 0 in the completion). Please reduce the length of the messages or completion.\",\"type\":\"invalid_request_error\",\"param\":null,\"code\":\"invalid_request_error\"}}"
+    },
+    {
+      "dialogue_id": "finance_013_natural_200turn",
+      "condition": "distant",
+      "success": 200,
+      "errors": 0,
+      "max_success_turn": 200,
+      "first_error_turn": null,
+      "first_error_message": null
+    },
+    {
+      "dialogue_id": "finance_013_natural_200turn",
+      "condition": "unhelpful",
+      "success": 200,
+      "errors": 0,
+      "max_success_turn": 200,
+      "first_error_turn": null,
+      "first_error_message": null
+    },
+    {
+      "dialogue_id": "mental_health_026_natural_200turn",
+      "condition": "default",
+      "success": 143,
+      "errors": 0,
+      "max_success_turn": 143,
+      "first_error_turn": null,
+      "first_error_message": null
+    }
+  ],
+  "top_error_messages": [
+    {
+      "message": "HTTP 400: {\"error\":{\"message\":\"This model's maximum context length is 131072 tokens. However, you requested 131087 tokens (131087 in the messages, 0 in the completion). Please reduce the length of the messages or complet",
+      "count": 25
+    },
+    {
+      "message": "HTTP 400: {\"error\":{\"message\":\"This model's maximum context length is 131072 tokens. However, you requested 131088 tokens (131088 in the messages, 0 in the completion). Please reduce the length of the messages or complet",
+      "count": 22
+    },
+    {
+      "message": "HTTP 400: {\"error\":{\"message\":\"This model's maximum context length is 131072 tokens. However, you requested 131089 tokens (131089 in the messages, 0 in the completion). Please reduce the length of the messages or complet",
+      "count": 21
+    },
+    {
+      "message": "HTTP 400: {\"error\":{\"message\":\"This model's maximum context length is 131072 tokens. However, you requested 131086 tokens (131086 in the messages, 0 in the completion). Please reduce the length of the messages or complet",
+      "count": 20
+    },
+    {
+      "message": "HTTP 400: {\"error\":{\"message\":\"This model's maximum context length is 131072 tokens. However, you requested 131090 tokens (131090 in the messages, 0 in the completion). Please reduce the length of the messages or complet",
+      "count": 18
+    }
+  ]
+}

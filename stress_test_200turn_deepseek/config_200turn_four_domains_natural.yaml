@@ -1,0 +1,39 @@
+dialogues_path: dialogues_200turn_four_domains_natural.jsonl
+prompts_path: ../frozen_inputs/prompts/prompts_persona_20260311_newprompts.json
+max_turns: 200
+output_dir: stress_test_200turn_deepseek/output_four_domains_natural
+resume_strategy: reconstruct
+flush_policy: per_turn
+retries: 3
+timeout: 120
+truncation_policy: sliding_window
+max_history_messages: 9000000
+max_context_chars: 420000
+abort_on_error: false
+input_compatibility_mode: true
+frozen_index_path: ../frozen_inputs/index.json
+require_approved_prompts: false
+require_approved_dialogues: false
+prepare_chunk_turns: 20
+prepare_chunk_context_turns: 24
+llm2:
+  provider: deepseek
+  model: deepseek-chat
+  api_key_env: DEEPSEEK_API_KEY
+  base_url: https://api.deepseek.com/v1
+  temperature: 0.9
+  top_p: 1.0
+llm3:
+  provider: deepseek
+  model: deepseek-chat
+  api_key_env: DEEPSEEK_API_KEY
+  base_url: https://api.deepseek.com/v1
+  temperature: 0.7
+  top_p: 1.0
+llm4:
+  provider: deepseek
+  model: deepseek-chat
+  api_key_env: DEEPSEEK_API_KEY
+  base_url: https://api.deepseek.com/v1
+  temperature: 0.0
+  top_p: 1.0

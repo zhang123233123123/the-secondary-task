@@ -1,0 +1,63 @@
+{
+  "source_results": "stress_test_200turn_deepseek/output_analysis_20260323/results_200turn_success_20260323.jsonl",
+  "filter": "successful rows with turn_index <= 150",
+  "total_rows": 1240,
+  "rows_by_condition": {
+    "cynical": 300,
+    "default": 340,
+    "distant": 300,
+    "unhelpful": 300
+  },
+  "rows_by_domain": {
+    "creative": 576,
+    "finance": 521,
+    "mental_health": 143
+  },
+  "combo_rows": [
+    {
+      "dialogue_id": "creative_000_natural_200turn",
+      "condition": "cynical",
+      "rows": 150
+    },
+    {
+      "dialogue_id": "creative_000_natural_200turn",
+      "condition": "default",
+      "rows": 126
+    },
+    {
+      "dialogue_id": "creative_000_natural_200turn",
+      "condition": "distant",
+      "rows": 150
+    },
+    {
+      "dialogue_id": "creative_000_natural_200turn",
+      "condition": "unhelpful",
+      "rows": 150
+    },
+    {
+      "dialogue_id": "finance_013_natural_200turn",
+      "condition": "cynical",
+      "rows": 150
+    },
+    {
+      "dialogue_id": "finance_013_natural_200turn",
+      "condition": "default",
+      "rows": 71
+    },
+    {
+      "dialogue_id": "finance_013_natural_200turn",
+      "condition": "distant",
+      "rows": 150
+    },
+    {
+      "dialogue_id": "finance_013_natural_200turn",
+      "condition": "unhelpful",
+      "rows": 150
+    },
+    {
+      "dialogue_id": "mental_health_026_natural_200turn",
+      "condition": "default",
+      "rows": 143
+    }
+  ]
+}
