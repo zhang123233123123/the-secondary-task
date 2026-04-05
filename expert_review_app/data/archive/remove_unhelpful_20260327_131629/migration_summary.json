@@ -1,0 +1,28 @@
+{
+  "archive_root": "/Users/zhanghongjian/Desktop/the-secondary-task/expert_review_app/data/archive/remove_unhelpful_20260327_131629",
+  "new_dataset_path": "/Users/zhanghongjian/Desktop/the-secondary-task/expert_review_app/data/review_samples_assigned_12x20.json",
+  "new_scheme": "assigned_12x20_no_unhelpful",
+  "new_sample_count": 240,
+  "migration_summary": {
+    "expert02": {
+      "migrated": 0,
+      "skipped_unhelpful": 0,
+      "skipped_unmatched": 5
+    },
+    "v_v_v": {
+      "migrated": 0,
+      "skipped_unhelpful": 0,
+      "skipped_unmatched": 1
+    },
+    "expert03": {
+      "migrated": 0,
+      "skipped_unhelpful": 5,
+      "skipped_unmatched": 15
+    },
+    "expert01": {
+      "migrated": 0,
+      "skipped_unhelpful": 0,
+      "skipped_unmatched": 1
+    }
+  }
+}
