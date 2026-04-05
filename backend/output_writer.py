@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -15,11 +16,13 @@ class JsonlWriter:
         self.effective_flush_policy = "per_turn"
         self._fh = self.results_path.open("a", encoding="utf-8")
         self.rows_written = 0
+        self._lock = threading.Lock()
 
     def write(self, row: dict[str, Any]) -> None:
-        self._fh.write(json.dumps(row, ensure_ascii=False) + "\n")
-        self.rows_written += 1
-        self._fh.flush()
+        with self._lock:
+            self._fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+            self.rows_written += 1
+            self._fh.flush()
 
     def close(self) -> None:
         self._fh.flush()

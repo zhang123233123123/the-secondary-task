@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import threading
 import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -229,6 +231,223 @@ def _write_validation_log(
     return output_path
 
 
+def _run_combo(
+    dialogue: Dialogue,
+    condition: str,
+    config: RuntimeConfig,
+    prompts: PromptsBundle,
+    resume_state: Any,
+    writer: JsonlWriter,
+    pbar: Any,
+    stats: RunStats,
+    stats_lock: threading.Lock,
+    abort_event: threading.Event,
+    llm3_client: Any,
+    llm4_client: Any,
+    hashes: dict[str, Any],
+    prompts_version: Any,
+    dialogues_version: Any,
+    actual_run_id: str,
+) -> None:
+    if abort_event.is_set():
+        return
+
+    system_prompt = prompts.conditions[condition]
+    combo_key = (dialogue.dialogue_id, condition)
+    combo_state = resume_state.combo_states.get(combo_key)
+    if (
+        config.resume_strategy == "skip"
+        and combo_state is not None
+        and combo_state.processed_turns
+    ):
+        return
+
+    history: list[dict[str, str]] = []
+    if system_prompt:
+        history.append({"role": "system", "content": system_prompt})
+    processed_turns: set[int] = set()
+    if config.resume_strategy == "reconstruct" and combo_state is not None:
+        history.extend(combo_state.history)
+        processed_turns = set(combo_state.processed_turns)
+
+    max_turns = min(len(dialogue.turns), config.max_turns)
+    with stats_lock:
+        stats.expected_rows += max_turns
+
+    for turn_index in range(1, max_turns + 1):
+        if abort_event.is_set():
+            break
+        if turn_index in processed_turns:
+            continue
+
+        user_text = dialogue.turns[turn_index - 1].text
+        history_with_current_turn = [*history, {"role": "user", "content": user_text}]
+        prompt_messages, context_truncated = _truncate_history(
+            history_with_current_turn,
+            policy=config.truncation_policy,
+            max_history_messages=config.max_history_messages,
+            max_context_chars=config.max_context_chars,
+        )
+
+        model_reply = ""
+        gen_latency_ms: int | None = None
+        judge_latency_ms: int | None = None
+        harm_1_10: int | None = None
+        negative_emotion_1_10: int | None = None
+        inappropriate_1_10: int | None = None
+        empathic_language_1_10: int | None = None
+        anthro_q1: int | None = None
+        anthro_q2: int | None = None
+        anthro_q3: int | None = None
+        anthro_q4: int | None = None
+        anthro_q5: int | None = None
+        error_stage: str | None = None
+        error_message: str | None = None
+        judge_raw: str | None = None
+        refusal_detected = False
+
+        try:
+            generate_result = _call_with_retry(
+                lambda: llm3_client.chat(prompt_messages, config.timeout_seconds),
+                retries=config.retries,
+            )
+            model_reply = generate_result.text
+            gen_latency_ms = generate_result.latency_ms
+            refusal_detected = detect_refusal(model_reply)
+        except Exception as exc:  # noqa: BLE001
+            error_stage = "generate"
+            error_message = str(exc)
+            with stats_lock:
+                stats.generate_errors += 1
+
+        if error_stage is None:
+            try:
+                judge_result = _call_with_retry(
+                    lambda: llm4_client.chat(
+                        _judge_messages(
+                            prompts,
+                            model_reply,
+                            user_text=user_text,
+                        ),
+                        config.timeout_seconds,
+                    ),
+                    retries=config.retries,
+                )
+                judge_latency_ms = judge_result.latency_ms
+                judge_raw = judge_result.text
+                parsed = parse_judge_json(judge_result.text)
+                validate_with_simple_schema(parsed, prompts.judge_schema)
+                scores = {
+                    "harm_1_10": int(parsed.get("harm_1_10")),
+                    "negative_emotion_1_10": int(parsed.get("negative_emotion_1_10")),
+                    "inappropriate_1_10": int(parsed.get("inappropriate_1_10")),
+                    "empathic_language_1_10": int(parsed.get("empathic_language_1_10")),
+                    "anthro_q1": int(parsed.get("anthro_q1")),
+                    "anthro_q2": int(parsed.get("anthro_q2")),
+                    "anthro_q3": int(parsed.get("anthro_q3")),
+                    "anthro_q4": int(parsed.get("anthro_q4")),
+                    "anthro_q5": int(parsed.get("anthro_q5")),
+                }
+                _validate_judge_score_range(scores)
+                harm_1_10 = scores["harm_1_10"]
+                negative_emotion_1_10 = scores["negative_emotion_1_10"]
+                inappropriate_1_10 = scores["inappropriate_1_10"]
+                empathic_language_1_10 = scores["empathic_language_1_10"]
+                anthro_q1 = scores["anthro_q1"]
+                anthro_q2 = scores["anthro_q2"]
+                anthro_q3 = scores["anthro_q3"]
+                anthro_q4 = scores["anthro_q4"]
+                anthro_q5 = scores["anthro_q5"]
+            except (TypeError, ValueError) as exc:
+                error_stage = "judge_parse"
+                error_message = str(exc)
+                harm_1_10 = None
+                negative_emotion_1_10 = None
+                inappropriate_1_10 = None
+                empathic_language_1_10 = None
+                anthro_q1 = None
+                anthro_q2 = None
+                anthro_q3 = None
+                anthro_q4 = None
+                anthro_q5 = None
+                with stats_lock:
+                    stats.judge_parse_errors += 1
+            except (LLMError, RuntimeError) as exc:
+                error_stage = "judge"
+                error_message = str(exc)
+                with stats_lock:
+                    stats.judge_errors += 1
+            except Exception as exc:  # noqa: BLE001
+                error_stage = "judge"
+                error_message = str(exc)
+                with stats_lock:
+                    stats.judge_errors += 1
+
+        row = {
+            "run_id": actual_run_id,
+            "dialogue_id": dialogue.dialogue_id,
+            "domain": dialogue.domain,
+            "condition": condition,
+            "turn_index": turn_index,
+            "timestamp_utc": _timestamp_utc(),
+            "user_text": user_text,
+            "model_reply": model_reply,
+            "harm_1_10": harm_1_10,
+            "negative_emotion_1_10": negative_emotion_1_10,
+            "inappropriate_1_10": inappropriate_1_10,
+            "empathic_language_1_10": empathic_language_1_10,
+            "anthro_q1": anthro_q1,
+            "anthro_q2": anthro_q2,
+            "anthro_q3": anthro_q3,
+            "anthro_q4": anthro_q4,
+            "anthro_q5": anthro_q5,
+            "error_stage": error_stage,
+            "error_message": error_message,
+            "refusal_detected": refusal_detected,
+            "context_truncated": context_truncated,
+            "gen_latency_ms": gen_latency_ms,
+            "judge_latency_ms": judge_latency_ms,
+            "llm3_model": config.llm3.model,
+            "llm3_provider": config.llm3.provider,
+            "llm4_provider": config.llm4.provider,
+            "llm3_params": {
+                "temperature": config.llm3.temperature,
+                "top_p": config.llm3.top_p,
+                "seed": config.llm3.seed,
+                "max_new_tokens": config.llm3.max_new_tokens,
+                "load_in_4bit": config.llm3.load_in_4bit,
+            },
+            "resume_strategy": config.resume_strategy,
+            "input_schema_variant": dialogue.input_schema_variant,
+            "prompts_version": prompts_version,
+            "dialogues_version": dialogues_version,
+            "judge_raw": judge_raw,
+            **hashes,
+        }
+        writer.write(row)
+        with stats_lock:
+            stats.actual_rows += 1
+        pbar.update(1)
+
+        if context_truncated:
+            with stats_lock:
+                stats.truncated_count += 1
+        if refusal_detected:
+            with stats_lock:
+                stats.refusal_count += 1
+
+        if error_stage != "generate":
+            history = history_with_current_turn
+            history.append({"role": "assistant", "content": model_reply})
+
+        if error_stage == "generate" and config.abort_on_error:
+            abort_event.set()
+            raise RuntimeError(error_message or "Generation failed")
+        if error_stage in {"judge", "judge_parse"} and config.abort_on_error:
+            abort_event.set()
+            raise RuntimeError(error_message or "Judge failed")
+
+
 def run_experiment(
     config: RuntimeConfig,
     config_path: str,
@@ -306,194 +525,45 @@ def run_experiment(
         dynamic_ncols=True,
     )
 
+    combos = [(d, c) for d in dialogues for c in CONDITIONS_ORDER]
+    stats_lock = threading.Lock()
+    abort_event = threading.Event()
+    combo_kwargs: dict[str, Any] = dict(
+        config=config,
+        prompts=prompts,
+        resume_state=resume_state,
+        writer=writer,
+        pbar=pbar,
+        stats=stats,
+        stats_lock=stats_lock,
+        abort_event=abort_event,
+        llm3_client=llm3_client,
+        llm4_client=llm4_client,
+        hashes=hashes,
+        prompts_version=prompts_version,
+        dialogues_version=dialogues_version,
+        actual_run_id=actual_run_id,
+    )
+
     try:
-        for dialogue in dialogues:
-            for condition in CONDITIONS_ORDER:
-                system_prompt = prompts.conditions[condition]
-                combo_key = (dialogue.dialogue_id, condition)
-                combo_state = resume_state.combo_states.get(combo_key)
-                if (
-                    config.resume_strategy == "skip"
-                    and combo_state is not None
-                    and combo_state.processed_turns
-                ):
-                    continue
-
-                history: list[dict[str, str]] = []
-                if system_prompt:
-                    history.append({"role": "system", "content": system_prompt})
-                processed_turns: set[int] = set()
-                if config.resume_strategy == "reconstruct" and combo_state is not None:
-                    history.extend(combo_state.history)
-                    processed_turns = set(combo_state.processed_turns)
-
-                max_turns = min(len(dialogue.turns), config.max_turns)
-                stats.expected_rows += max_turns
-
+        if config.dialogue_workers <= 1:
+            for dialogue, condition in combos:
                 pbar.set_postfix_str(f"{dialogue.dialogue_id}/{condition}")
-
-                for turn_index in range(1, max_turns + 1):
-                    if turn_index in processed_turns:
-                        continue
-
-                    user_text = dialogue.turns[turn_index - 1].text
-                    history_with_current_turn = [*history, {"role": "user", "content": user_text}]
-                    prompt_messages, context_truncated = _truncate_history(
-                        history_with_current_turn,
-                        policy=config.truncation_policy,
-                        max_history_messages=config.max_history_messages,
-                        max_context_chars=config.max_context_chars,
-                    )
-
-                    model_reply = ""
-                    gen_latency_ms: int | None = None
-                    judge_latency_ms: int | None = None
-                    harm_1_10: int | None = None
-                    negative_emotion_1_10: int | None = None
-                    inappropriate_1_10: int | None = None
-                    empathic_language_1_10: int | None = None
-                    anthro_q1: int | None = None
-                    anthro_q2: int | None = None
-                    anthro_q3: int | None = None
-                    anthro_q4: int | None = None
-                    anthro_q5: int | None = None
-                    error_stage: str | None = None
-                    error_message: str | None = None
-                    judge_raw: str | None = None
-                    refusal_detected = False
-
+                _run_combo(dialogue, condition, **combo_kwargs)
+                if abort_event.is_set():
+                    break
+        else:
+            with ThreadPoolExecutor(max_workers=config.dialogue_workers) as executor:
+                futures = {
+                    executor.submit(_run_combo, d, c, **combo_kwargs): (d.dialogue_id, c)
+                    for d, c in combos
+                }
+                for future in as_completed(futures):
                     try:
-                        generate_result = _call_with_retry(
-                            lambda: llm3_client.chat(prompt_messages, config.timeout_seconds),
-                            retries=config.retries,
-                        )
-                        model_reply = generate_result.text
-                        gen_latency_ms = generate_result.latency_ms
-                        refusal_detected = detect_refusal(model_reply)
-                    except Exception as exc:  # noqa: BLE001
-                        error_stage = "generate"
-                        error_message = str(exc)
-                        stats.generate_errors += 1
-
-                    if error_stage is None:
-                        try:
-                            judge_result = _call_with_retry(
-                                lambda: llm4_client.chat(
-                                    _judge_messages(
-                                        prompts,
-                                        model_reply,
-                                        user_text=user_text,
-                                    ),
-                                    config.timeout_seconds,
-                                ),
-                                retries=config.retries,
-                            )
-                            judge_latency_ms = judge_result.latency_ms
-                            judge_raw = judge_result.text
-                            parsed = parse_judge_json(judge_result.text)
-                            validate_with_simple_schema(parsed, prompts.judge_schema)
-                            scores = {
-                                "harm_1_10": int(parsed.get("harm_1_10")),
-                                "negative_emotion_1_10": int(parsed.get("negative_emotion_1_10")),
-                                "inappropriate_1_10": int(parsed.get("inappropriate_1_10")),
-                                "empathic_language_1_10": int(parsed.get("empathic_language_1_10")),
-                                "anthro_q1": int(parsed.get("anthro_q1")),
-                                "anthro_q2": int(parsed.get("anthro_q2")),
-                                "anthro_q3": int(parsed.get("anthro_q3")),
-                                "anthro_q4": int(parsed.get("anthro_q4")),
-                                "anthro_q5": int(parsed.get("anthro_q5")),
-                            }
-                            _validate_judge_score_range(scores)
-                            harm_1_10 = scores["harm_1_10"]
-                            negative_emotion_1_10 = scores["negative_emotion_1_10"]
-                            inappropriate_1_10 = scores["inappropriate_1_10"]
-                            empathic_language_1_10 = scores["empathic_language_1_10"]
-                            anthro_q1 = scores["anthro_q1"]
-                            anthro_q2 = scores["anthro_q2"]
-                            anthro_q3 = scores["anthro_q3"]
-                            anthro_q4 = scores["anthro_q4"]
-                            anthro_q5 = scores["anthro_q5"]
-                        except (TypeError, ValueError) as exc:
-                            error_stage = "judge_parse"
-                            error_message = str(exc)
-                            harm_1_10 = None
-                            negative_emotion_1_10 = None
-                            inappropriate_1_10 = None
-                            empathic_language_1_10 = None
-                            anthro_q1 = None
-                            anthro_q2 = None
-                            anthro_q3 = None
-                            anthro_q4 = None
-                            anthro_q5 = None
-                            stats.judge_parse_errors += 1
-                        except (LLMError, RuntimeError) as exc:
-                            error_stage = "judge"
-                            error_message = str(exc)
-                            stats.judge_errors += 1
-                        except Exception as exc:  # noqa: BLE001
-                            error_stage = "judge"
-                            error_message = str(exc)
-                            stats.judge_errors += 1
-
-                    row = {
-                        "run_id": actual_run_id,
-                        "dialogue_id": dialogue.dialogue_id,
-                        "domain": dialogue.domain,
-                        "condition": condition,
-                        "turn_index": turn_index,
-                        "timestamp_utc": _timestamp_utc(),
-                        "user_text": user_text,
-                        "model_reply": model_reply,
-                        "harm_1_10": harm_1_10,
-                        "negative_emotion_1_10": negative_emotion_1_10,
-                        "inappropriate_1_10": inappropriate_1_10,
-                        "empathic_language_1_10": empathic_language_1_10,
-                        "anthro_q1": anthro_q1,
-                        "anthro_q2": anthro_q2,
-                        "anthro_q3": anthro_q3,
-                        "anthro_q4": anthro_q4,
-                        "anthro_q5": anthro_q5,
-                        "error_stage": error_stage,
-                        "error_message": error_message,
-                        "refusal_detected": refusal_detected,
-                        "context_truncated": context_truncated,
-                        "gen_latency_ms": gen_latency_ms,
-                        "judge_latency_ms": judge_latency_ms,
-                        "llm3_model": config.llm3.model,
-                        "llm3_provider": config.llm3.provider,
-                        "llm4_provider": config.llm4.provider,
-                        "llm3_params": {
-                            "temperature": config.llm3.temperature,
-                            "top_p": config.llm3.top_p,
-                            "seed": config.llm3.seed,
-                            "max_new_tokens": config.llm3.max_new_tokens,
-                            "load_in_4bit": config.llm3.load_in_4bit,
-                        },
-                        "resume_strategy": config.resume_strategy,
-                        "input_schema_variant": dialogue.input_schema_variant,
-                        "prompts_version": prompts_version,
-                        "dialogues_version": dialogues_version,
-                        "judge_raw": judge_raw,
-                        **hashes,
-                    }
-                    writer.write(row)
-                    stats.actual_rows += 1
-                    pbar.update(1)
-
-                    if context_truncated:
-                        stats.truncated_count += 1
-                    if refusal_detected:
-                        stats.refusal_count += 1
-
-                    # Keep history clean from failed generate turns.
-                    if error_stage != "generate":
-                        history = history_with_current_turn
-                        history.append({"role": "assistant", "content": model_reply})
-
-                    if error_stage == "generate" and config.abort_on_error:
-                        raise RuntimeError(error_message or "Generation failed")
-                    if error_stage in {"judge", "judge_parse"} and config.abort_on_error:
-                        raise RuntimeError(error_message or "Judge failed")
+                        future.result()
+                    except RuntimeError as exc:
+                        if abort_reason is None:
+                            abort_reason = str(exc)
     except RuntimeError as exc:
         abort_reason = str(exc)
 
