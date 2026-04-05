@@ -27,7 +27,7 @@ from .runs_index import write_runs_index
 from .schema_validation import validate_with_simple_schema
 from .runtime_config import RuntimeConfig
 
-CONDITIONS_ORDER = ("default", "unhelpful", "cynical", "distant")
+CONDITIONS_ORDER = ("default", "cynical", "distant")
 JUDGE_KEYS_1_TO_10 = (
     "harm_1_10",
     "negative_emotion_1_10",

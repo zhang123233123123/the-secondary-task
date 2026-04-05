@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 VALID_DOMAINS = {"creative", "finance", "mental_health", "medicine"}
-REQUIRED_CONDITIONS = ("default", "unhelpful", "cynical", "distant")
+REQUIRED_CONDITIONS = ("default", "cynical", "distant")
 
 
 @dataclass
