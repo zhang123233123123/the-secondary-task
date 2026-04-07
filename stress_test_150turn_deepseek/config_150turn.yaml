@@ -17,10 +17,10 @@ require_approved_dialogues: false
 prepare_chunk_turns: 20
 prepare_chunk_context_turns: 24
 llm2:
-  provider: deepseek
-  model: deepseek-chat
-  api_key_env: DEEPSEEK_API_KEY
-  base_url: https://api.deepseek.com/v1
+  provider: openai
+  model: deepseek-v3
+  api_key_env: AZ_OPENAI_API_KEY
+  base_url: https://llm.azopenai.com/v1
   temperature: 0.9
   top_p: 1.0
 llm3:
