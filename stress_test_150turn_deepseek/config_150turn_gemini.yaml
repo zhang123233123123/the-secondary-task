@@ -24,10 +24,10 @@ llm2:
   temperature: 0.9
   top_p: 1.0
 llm3:
-  provider: openai
-  model: deepseek-v3
+  provider: gemini
+  model: gemini-2.5-flash
   api_key_env: AZ_OPENAI_API_KEY
-  base_url: https://llm.azopenai.com/v1
+  base_url: https://llm.azopenai.com
   temperature: 0.7
   top_p: 1.0
 llm4:

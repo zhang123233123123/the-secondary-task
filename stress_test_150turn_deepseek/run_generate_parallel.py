@@ -20,7 +20,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from backend.input_loader import compute_sha256, load_dialogues, load_prompts  # noqa: E402
-from backend.llm_clients import OpenAICompatibleChatClient, detect_refusal  # noqa: E402
+from backend.llm_clients import detect_refusal, make_llm_client  # noqa: E402
 from backend.runtime_config import load_config  # noqa: E402
 
 CONDITIONS = ("default", "cynical", "distant")
@@ -82,7 +82,7 @@ def _run_combo(
     run_id: str,
     hashes: dict[str, str],
 ) -> list[dict[str, Any]]:
-    client = OpenAICompatibleChatClient(llm3_config)
+    client = make_llm_client(llm3_config)
     system_prompt = prompts.conditions[condition]
 
     history: list[dict[str, str]] = []
@@ -213,8 +213,9 @@ def main() -> int:
     total_combos = len(combos)
     total_rows = total_combos * max_turns
 
-    # Resume: count already-written turns per (dialogue_id, condition)
+    # Resume: count total and successful turns per (dialogue_id, condition)
     done_turns: dict[tuple[str, str], int] = {}
+    ok_turns: dict[tuple[str, str], int] = {}
     if output_path.exists():
         with output_path.open(encoding="utf-8") as fh:
             for line in fh:
@@ -225,13 +226,24 @@ def main() -> int:
                     r = json.loads(line)
                     key = (r["dialogue_id"], r["condition"])
                     done_turns[key] = done_turns.get(key, 0) + 1
+                    if not r.get("error_stage"):
+                        ok_turns[key] = ok_turns.get(key, 0) + 1
                 except (json.JSONDecodeError, KeyError):
                     continue
-        skipped = sum(1 for (d, c) in combos if done_turns.get((d.dialogue_id, c), 0) >= max_turns)
+
+        def _is_done(d, c):
+            key = (d.dialogue_id, c)
+            return done_turns.get(key, 0) >= max_turns and ok_turns.get(key, 0) > 0
+
+        skipped = sum(1 for (d, c) in combos if _is_done(d, c))
         if skipped:
             print(f"Resume: {skipped} combos already complete, skipping.")
 
-    combos = [(d, c) for d, c in combos if done_turns.get((d.dialogue_id, c), 0) < max_turns]
+    else:
+        def _is_done(d, c):
+            return False
+
+    combos = [(d, c) for d, c in combos if not _is_done(d, c)]
     pending_combos = len(combos)
 
     print(f"Run ID: {run_id}")

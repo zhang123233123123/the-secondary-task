@@ -22,7 +22,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from backend.input_loader import compute_sha256, load_prompts  # noqa: E402
-from backend.llm_clients import OpenAICompatibleChatClient, parse_judge_json  # noqa: E402
+from backend.llm_clients import make_llm_client, parse_judge_json  # noqa: E402
 from backend.runtime_config import load_config  # noqa: E402
 
 JUDGE_KEYS_1_TO_10 = (
@@ -103,7 +103,7 @@ def _judge_row(
     error_message: str | None = row.get("error_message")
     scores: dict[str, int | None] = {k: None for k in ALL_JUDGE_KEYS}
 
-    client = OpenAICompatibleChatClient(llm4_config)
+    client = make_llm_client(llm4_config)
     try:
         result = _call_with_retry(
             lambda: client.chat(messages, config.timeout_seconds),

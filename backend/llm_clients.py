@@ -81,6 +81,89 @@ class OpenAICompatibleChatClient:
         return ChatResult(text=str(content), latency_ms=latency_ms, raw=raw)
 
 
+def _messages_to_gemini(
+    messages: list[dict[str, str]],
+) -> tuple[dict | None, list[dict]]:
+    """Convert OpenAI-style messages to Gemini contents format."""
+    system_instruction = None
+    contents = []
+    for msg in messages:
+        role = msg["role"]
+        text = msg.get("content", "")
+        if role == "system":
+            system_instruction = {"parts": [{"text": text}]}
+        elif role == "user":
+            contents.append({"role": "user", "parts": [{"text": text}]})
+        elif role == "assistant":
+            contents.append({"role": "model", "parts": [{"text": text}]})
+    return system_instruction, contents
+
+
+class GeminiChatClient:
+    """Client for Google Gemini API (generateContent endpoint)."""
+
+    def __init__(self, config: LLMConfig) -> None:
+        self.config = config
+
+    def chat(self, messages: list[dict[str, str]], timeout_seconds: float) -> ChatResult:
+        api_key = os.environ.get(self.config.api_key_env)
+        if not api_key:
+            raise LLMError(f"Missing API key environment variable: {self.config.api_key_env}")
+
+        system_instruction, contents = _messages_to_gemini(messages)
+        payload: dict[str, Any] = {
+            "contents": contents,
+            "generationConfig": {
+                "temperature": self.config.temperature,
+                "topP": self.config.top_p,
+            },
+        }
+        if system_instruction:
+            payload["system_instruction"] = system_instruction
+
+        body = json.dumps(payload).encode("utf-8")
+        base = self.config.base_url.rstrip("/")
+        endpoint = f"{base}/v1beta/models/{self.config.model}:generateContent"
+        request = urllib.request.Request(
+            endpoint,
+            data=body,
+            method="POST",
+            headers={
+                "Content-Type": "application/json",
+                "x-goog-api-key": api_key,
+            },
+        )
+
+        start = time.perf_counter()
+        try:
+            ssl_context = None
+            if certifi is not None:
+                ssl_context = ssl.create_default_context(cafile=certifi.where())
+            with urllib.request.urlopen(request, timeout=timeout_seconds, context=ssl_context) as response:
+                text = response.read().decode("utf-8")
+        except urllib.error.HTTPError as exc:
+            error_payload = exc.read().decode("utf-8", errors="replace")
+            raise LLMError(f"HTTP {exc.code}: {error_payload}") from exc
+        except urllib.error.URLError as exc:
+            raise LLMError(f"Network error: {exc}") from exc
+        latency_ms = int((time.perf_counter() - start) * 1000)
+
+        try:
+            raw = json.loads(text)
+            content = raw["candidates"][0]["content"]["parts"][0]["text"]
+        except (json.JSONDecodeError, KeyError, IndexError, TypeError) as exc:
+            raise LLMError(f"Invalid Gemini response: {text[:300]}") from exc
+
+        return ChatResult(text=str(content), latency_ms=latency_ms, raw=raw)
+
+
+def make_llm_client(config: LLMConfig) -> OpenAICompatibleChatClient | GeminiChatClient:
+    """Factory: return the right client based on config.provider."""
+    if config.provider == "gemini":
+        return GeminiChatClient(config)
+    return OpenAICompatibleChatClient(config)
+
+
 def detect_refusal(text: str) -> bool:
     lowered = text.lower()
     markers = (
